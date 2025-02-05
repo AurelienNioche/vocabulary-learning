@@ -1,0 +1,62 @@
+{
+  "さようなら": {
+    "attempts": 16,
+    "successes": 12,
+    "last_seen": "2025-02-04T18:03:11.349525",
+    "review_intervals": [
+      0.051174224166666664,
+      0.0006025594444444445,
+      0.024761988611111112,
+      0.0018576952777777777
+    ]
+  },
+  "ありがとう": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-04T17:40:33.786797",
+    "review_intervals": []
+  },
+  "はい": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-04T17:48:30.756921",
+    "review_intervals": []
+  },
+  "こんにちは": {
+    "attempts": 3,
+    "successes": 2,
+    "last_seen": "2025-02-04T18:03:18.706867",
+    "review_intervals": [
+      0.21680997750000003,
+      0.027098785555555557
+    ]
+  },
+  "いいえ": {
+    "attempts": 2,
+    "successes": 2,
+    "last_seen": "2025-02-04T18:03:21.611456",
+    "review_intervals": [
+      0.24404315277777777
+    ]
+  },
+  "おはよう": {
+    "attempts": 2,
+    "successes": 2,
+    "last_seen": "2025-02-04T18:01:30.528036",
+    "review_intervals": [
+      0.07638074805555554
+    ]
+  },
+  "にほん": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-04T17:56:58.687364",
+    "review_intervals": []
+  },
+  "こんばんは": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-04T17:58:22.898371",
+    "review_intervals": []
+  }
+}
