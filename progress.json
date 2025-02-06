@@ -141,16 +141,5 @@
       0.0049192113888888896
     ],
     "last_attempt_was_failure": false
-  },
-  "おわれそう": {
-    "attempts": 3,
-    "successes": 1,
-    "last_seen": "2025-02-06T18:26:07.426824",
-    "review_intervals": [
-      0.0033997397222222223,
-      0.002960616388888889,
-      4.0000000000000003e-07
-    ],
-    "last_attempt_was_failure": true
   }
 }
