@@ -100,5 +100,13 @@
     "review_intervals": [
       5.2777777777777784e-09
     ]
+  },
+  "とる": {
+    "attempts": 1,
+    "successes": 0,
+    "last_seen": "2025-02-06T16:37:20.044898",
+    "review_intervals": [
+      6.666666666666667e-09
+    ]
   }
 }
