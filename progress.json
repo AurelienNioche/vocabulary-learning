@@ -77,11 +77,12 @@
     "last_attempt_was_failure": false
   },
   "ほし": {
-    "attempts": 1,
-    "successes": 0,
-    "last_seen": "2025-02-06T11:52:32.172495",
+    "attempts": 2,
+    "successes": 1,
+    "last_seen": "2025-02-06T21:54:29.085671",
     "review_intervals": [
-      5.555555555555556e-09
+      5.555555555555556e-09,
+      10.032475868333334
     ],
     "last_attempt_was_failure": false
   },
@@ -141,5 +142,24 @@
       0.0049192113888888896
     ],
     "last_attempt_was_failure": false
+  },
+  "らく": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-06T21:54:33.651581",
+    "review_intervals": [
+      0.0012651925
+    ],
+    "last_attempt_was_failure": false
+  },
+  "よろこぶ": {
+    "attempts": 2,
+    "successes": 0,
+    "last_seen": "2025-02-06T21:54:52.564891",
+    "review_intervals": [
+      0.0018217919444444444,
+      0.0034288338888888888
+    ],
+    "last_attempt_was_failure": true
   }
 }
