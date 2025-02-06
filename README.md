@@ -1,49 +1,98 @@
-# Japanese-French Vocabulary Learner
+# Japanese Vocabulary Learning Tool
 
-A command-line application for learning Japanese-French vocabulary using spaced repetition principles.
+An interactive command-line tool for learning Japanese vocabulary with spaced repetition and git-based progress tracking.
 
 ## Features
 
-- Learns from a CSV file containing Japanese-French word pairs
-- Uses spaced repetition to optimize learning
-- Tracks progress and adapts to your learning pace
-- Prioritizes words you find difficult
-- Ensures regular exposure to new words
+### Core Features
+- Learn Japanese vocabulary with French translations
+- Support for hiragana, katakana, kanji, and romaji input
+- Automatic conversion between different Japanese writing systems
+- Smart spaced repetition system based on your performance
+- Progress tracking and statistics
+
+### Practice Mode
+- Intelligent word selection based on your learning history
+- Multiple correct answers support (separated by slashes)
+- Typo tolerance with user confirmation
+- Accent-insensitive answer checking
+- Example sentences with translations
+
+### Vim-like Commands
+- `:h` - Show help
+- `:q` - Quit to menu (saves progress)
+- `:q!` - Force quit program
+- `:w` - Show save status
+- `:s` - Show word statistics
+- `:S` - Show all statistics
+- `:e` - Show example with translation
+- `:d` - Don't know (show answer)
+
+### Git Integration
+- Automatic commits of your progress
+- Automatic push to remote repository
+- Timestamped commits for tracking learning sessions
+- Progress backup on every quit or interrupt
+
+### Learning Features
+- Smart answer validation:
+  - Handles multiple correct translations
+  - Detects and suggests corrections for accents
+  - Identifies minor typos and asks for confirmation
+- Example sentences with translations
+- Detailed statistics for each word
+- Progress tracking with success rates
 
 ## Installation
 
-1. Clone this repository
-2. Install the required dependencies:
+1. Clone the repository:
 ```bash
-pip install -r requirements.txt
+git clone <your-repo-url>
+cd vocabulary-learning
+```
+
+2. Install dependencies:
+```bash
+pip install -e .
 ```
 
 ## Usage
 
-1. Add your vocabulary words to `vocabulary.csv` in the format:
-```csv
-japanese,french
-こんにちは,bonjour
-```
-
-2. Run the application:
+1. Run the program:
 ```bash
 python vocab_learner.py
 ```
 
-3. Follow the prompts to practice your vocabulary:
-- Type your answer in French when shown a Japanese word
-- Press Enter to submit your answer
-- Type 'q' to quit at any time
+2. Choose from the main menu:
+- Practice vocabulary
+- Show progress
+- Add vocabulary
+- Quit
+
+3. During practice:
+- Type your answer or use Vim-like commands
+- Use `:d` if you don't know the answer
+- Use `:e` to see example sentences with translations
+- Use `:s` to see your statistics for the current word
+
+## Adding Vocabulary
+
+- Enter Japanese words in any form (hiragana, kanji, romaji)
+- Add multiple translations using slashes (e.g., "bonjour/salut")
+- Optional kanji and example sentences
+- Automatic suggestions for kanji and translations
 
 ## Progress Tracking
 
-The application automatically tracks your progress in `progress.json`. This includes:
-- Number of attempts for each word
-- Success rate
-- Last time each word was practiced
+Your progress is:
+- Saved automatically after each answer
+- Committed to git when you quit
+- Pushed to your remote repository
+- Tracked with detailed statistics
 
-The spaced repetition system will:
-- Show difficult words more frequently
-- Space out words you know well
-- Regularly introduce new words 
+## Tips
+
+- Use `:d` when you don't know a word instead of guessing
+- Check example sentences with `:e` to learn context
+- Review your progress regularly with `:S`
+- Your progress is automatically backed up via git 

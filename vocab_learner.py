@@ -14,6 +14,8 @@ import pykakasi
 import time
 import unicodedata
 import re
+import subprocess
+from difflib import SequenceMatcher
 
 class VocabularyLearner:
     def __init__(self, csv_path, progress_file="progress.json"):
@@ -26,19 +28,21 @@ class VocabularyLearner:
         signal.signal(signal.SIGINT, self.signal_handler)
         # Vim-like commands
         self.vim_commands = {
-            ':q': 'quit to menu',
-            ':q!': 'quit program',
-            ':w': 'show save status',
+            ':q': 'quit program',
+            ':m': 'return to menu',
             ':h': 'show help',
             ':s': 'show word statistics',
             ':S': 'show all statistics',
-            ':e': 'show example'
+            ':e': 'show example',
+            ':d': 'show answer (don\'t know)'
         }
         self.last_save_time = datetime.now()
         # Initialize Japanese text converter
         self.kks = pykakasi.kakasi()
         # Initialize translator
         self.translator = Translator()
+        # Initialize git status
+        self.git_available = self._check_git_repo()
         # Common romaji to hiragana mappings
         self.romaji_to_hiragana = {
             'a': 'あ', 'i': 'い', 'u': 'う', 'e': 'え', 'o': 'お',
@@ -74,10 +78,62 @@ class VocabularyLearner:
             'wo': 'を',
         }
 
+    def _check_git_repo(self):
+        """Check if we're in a git repository."""
+        try:
+            subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'], 
+                         stdout=subprocess.PIPE, 
+                         stderr=subprocess.PIPE, 
+                         check=True)
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
+    def _git_commit(self):
+        """Commit changes to git if in a git repository and push to remote."""
+        if not self.git_available:
+            return
+
+        try:
+            # Check if there are any changes to commit
+            status = subprocess.run(['git', 'status', '--porcelain', self.csv_path, self.progress_file],
+                                 check=True,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 text=True)
+            
+            # If no changes, return early
+            if not status.stdout.strip():
+                return
+            
+            # Add all changes
+            subprocess.run(['git', 'add', self.csv_path, self.progress_file], 
+                         check=True, 
+                         stdout=subprocess.PIPE, 
+                         stderr=subprocess.PIPE)
+            
+            # Create commit with timestamp
+            commit_message = f"Update vocabulary progress - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            subprocess.run(['git', 'commit', '-m', commit_message], 
+                         check=True,
+                         stdout=subprocess.PIPE, 
+                         stderr=subprocess.PIPE)
+            
+            # Push changes to remote
+            subprocess.run(['git', 'push'], 
+                         check=True,
+                         stdout=subprocess.PIPE, 
+                         stderr=subprocess.PIPE)
+            
+            self.console.print("[green]Changes committed and pushed to git repository[/green]")
+        except subprocess.CalledProcessError as e:
+            self.console.print(f"[yellow]Note: Git operation failed - {str(e)}[/yellow]")
+
     def signal_handler(self, signum, frame):
         """Handle Ctrl+C gracefully"""
-        self.console.print("\n\n[yellow]Saving progress and exiting...[/yellow]")
+        self.console.print("\n\n[yellow]Saving progress and committing changes...[/yellow]")
         self.save_progress()
+        self._git_commit()
         exit(0)
 
     def load_vocabulary(self):
@@ -101,6 +157,8 @@ class VocabularyLearner:
                 for word in self.progress:
                     if 'review_intervals' not in self.progress[word]:
                         self.progress[word]['review_intervals'] = []
+                    if 'last_attempt_was_failure' not in self.progress[word]:
+                        self.progress[word]['last_attempt_was_failure'] = False
         else:
             self.progress = {}
 
@@ -220,7 +278,8 @@ class VocabularyLearner:
                 'attempts': 0,
                 'successes': 0,
                 'last_seen': datetime.now().isoformat(),
-                'review_intervals': []  # Track intervals between reviews
+                'review_intervals': [],
+                'last_attempt_was_failure': False
             }
 
         # Calculate and store interval since last review
@@ -475,17 +534,37 @@ class VocabularyLearner:
         text = ''.join(c for c in text if not unicodedata.combining(c))
         return text
 
+    def _is_minor_typo(self, str1, str2, threshold=0.85):
+        """Check if two strings are similar enough to be considered a typo."""
+        return SequenceMatcher(None, str1, str2).ratio() > threshold
+
     def check_answer(self, user_answer, correct_answer):
-        """Check if the answer is correct, suggesting corrections for accents if needed."""
-        user_normalized = self.normalize_french(user_answer)
-        correct_normalized = self.normalize_french(correct_answer)
-        exact_match = user_answer.lower().strip() == correct_answer.lower().strip()
-        normalized_match = user_normalized == correct_normalized
+        """Check if the answer is correct, handling multiple possible answers and typos."""
+        user_answer = user_answer.lower().strip()
+        # Split correct answer by slashes and clean each part
+        correct_answers = [ans.strip() for ans in correct_answer.split('/')]
         
-        if exact_match:
+        # First try exact match with any of the possible answers
+        if any(user_answer == ans.lower() for ans in correct_answers):
             return True, None
-        elif normalized_match:
-            return False, f"[yellow]Almost! You wrote '{user_answer}' but the correct spelling is '{correct_answer}'[/yellow]"
+            
+        # Then try normalized match (without accents)
+        user_normalized = self.normalize_french(user_answer)
+        for ans in correct_answers:
+            ans_normalized = self.normalize_french(ans)
+            if user_normalized == ans_normalized:
+                return False, f"[yellow]Almost! You wrote '{user_answer}' but the correct spelling is '{ans}'[/yellow]"
+            
+            # Check for minor typos
+            if self._is_minor_typo(user_normalized, ans_normalized):
+                if Confirm.ask(f"\n[yellow]Did you mean '[green]{ans}[/green]'? Count as correct?[/yellow]"):
+                    return True, f"[yellow]Noted! The correct spelling is '[green]{ans}[/green]'[/yellow]"
+        
+        # If multiple answers were possible, show them all
+        if len(correct_answers) > 1:
+            formatted_answers = ' / '.join(f"[green]{ans}[/green]" for ans in correct_answers)
+            self.console.print(f"[yellow]Note: Any of these answers would be correct: {formatted_answers}[/yellow]")
+            
         return False, None
 
     def show_word_statistics(self, word_pair):
@@ -540,98 +619,163 @@ class VocabularyLearner:
             while True:
                 self.console.clear()
                 self.console.print("\n[bold blue]Options:[/bold blue]")
-                self.console.print("1. Practice vocabulary")
-                self.console.print("2. Show progress")
-                self.console.print("3. Add vocabulary")
-                self.console.print("4. Quit")
-                self.console.print("\nVim commands available! Type :h for help")
+                self.console.print("[purple]1.[/purple] Practice vocabulary")
+                self.console.print("[purple]2.[/purple] Show progress")
+                self.console.print("[purple]3.[/purple] Add vocabulary")
+                self.console.print("[purple]4.[/purple] Quit")
+                self.console.print("\n[dim]Available commands:[/dim]")
+                self.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know")
                 
-                choice = Prompt.ask("\nChoose an option", choices=["1", "2", "3", "4"])
-                
-                if choice == "4":
-                    break
-                elif choice == "2":
-                    self.show_progress()
-                    if not Confirm.ask("\nReturn to menu?"):
+                while True:
+                    choice = Prompt.ask("\nChoose an option [[purple]1[/purple]/[purple]2[/purple]/[purple]3[/purple]/[purple]4[/purple]]")
+                    
+                    if choice.startswith(':'):
+                        if choice == ':h':
+                            self.show_help()
+                            if not Confirm.ask("\nReturn to menu?"):
+                                return
+                            break
+                        elif choice == ':q':
+                            self.save_progress()
+                            self._git_commit()
+                            return
+                        elif choice == ':s' or choice == ':S':
+                            self.show_progress()
+                            if not Confirm.ask("\nReturn to menu?"):
+                                return
+                            break
+                        else:
+                            self.console.print("[red]Unknown command. Type :h for help.[/red]")
+                        continue
+                    
+                    if choice not in ["1", "2", "3", "4"]:
+                        self.console.print("[red]Please select one of the options (1-4) or use a valid Vim command[/red]")
+                        continue
+                        
+                    if choice == "4":
+                        self.save_progress()
+                        self._git_commit()
+                        return
+                    elif choice == "2":
+                        self.show_progress()
+                        if not Confirm.ask("\nReturn to menu?"):
+                            return
                         break
-                    continue
-                elif choice == "3":
-                    self.add_vocabulary()
-                    continue
+                    elif choice == "3":
+                        self.add_vocabulary()
+                        break
+                    elif choice == "1":
+                        break  # Continue to practice mode
                 
                 # Practice mode
-                self.console.clear()
-                # Reload vocabulary before starting practice
-                self.load_vocabulary()
-                self.console.print(f"[green]Loaded {len(self.vocabulary)} words from vocabulary file[/green]")
-                
-                self.console.print("[bold blue]Practice Mode[/bold blue]")
-                self.console.print("Vim commands available! Type :h for help\n")
-                
-                while True:  # Inner practice loop
-                    word_pair = self.select_word()
-                    if word_pair is None:
-                        self.console.print("[yellow]No vocabulary words available. Please add some words to the CSV file.[/yellow]")
-                        break
-
-                    # Keep asking the same word until correct or user quits
-                    retry = True
-                    while retry:
-                        self.console.print("\n[bold blue]Translate to French:[/bold blue]")
-                        # Display Japanese with kanji if available
-                        kanji_display = f" [cyan][{word_pair['kanji']}][/cyan]" if pd.notna(word_pair['kanji']) else ""
-                        self.console.print(f"[bold green]{word_pair['japanese']}{kanji_display}[/bold green]\n")
-
-                        answer = Prompt.ask("Your answer (type a command or your answer)")
-                        
-                        # Handle Vim-like commands
-                        if answer.startswith(':'):
-                            if answer == ':q':
-                                retry = False
-                                break
-                            elif answer == ':q!':
-                                self.save_progress()
-                                exit(0)
-                            elif answer == ':w':
-                                self.show_save_status()
-                                continue
-                            elif answer == ':h':
-                                self.show_help()
-                                continue
-                            elif answer == ':s':
-                                self.show_word_statistics(word_pair)
-                                continue
-                            elif answer == ':S':
-                                self.show_progress()
-                                continue
-                            elif answer == ':e':
-                                if pd.notna(word_pair['example_sentence']) and word_pair['example_sentence'].strip():
-                                    self.console.print(f"\n[italic yellow]Example: {word_pair['example_sentence']}[/italic yellow]")
-                                else:
-                                    self.console.print("\n[yellow]No example available for this word[/yellow]")
-                                continue
-                            else:
-                                self.console.print("[red]Unknown command. Type :h for help.[/red]")
-                                continue
-
-                        correct, note = self.check_answer(answer, word_pair['french'])
-                        if correct:
-                            self.console.print("[bold green]Correct! ✓[/bold green]")
-                            if note:
-                                self.console.print(note)
-                            retry = False
-                        else:
-                            self.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
-                            self.console.print("\n[yellow]Let's try this word again...[/yellow]")
-
-                        self.update_progress(word_pair['japanese'], correct)
+                if choice == "1":
+                    self.console.clear()
+                    # Reload vocabulary before starting practice
+                    self.load_vocabulary()
+                    self.console.print(f"[green]Loaded {len(self.vocabulary)} words from vocabulary file[/green]")
                     
-                    if answer == ':q':  # Break out of main practice loop if user quit
-                        break
+                    self.console.print("[bold blue]Practice Mode[/bold blue]\n")
+                    
+                    while True:  # Inner practice loop
+                        word_pair = self.select_word()
+                        if word_pair is None:
+                            self.console.print("[yellow]No vocabulary words available. Please add some words to the CSV file.[/yellow]")
+                            break
+
+                        # Keep asking the same word until correct or user quits
+                        retry = True
+                        if word_pair['japanese'] not in self.progress:
+                            self.progress[word_pair['japanese']] = {
+                                'attempts': 0,
+                                'successes': 0,
+                                'last_seen': datetime.now().isoformat(),
+                                'review_intervals': [],
+                                'last_attempt_was_failure': False
+                            }
+                        attempts = 0
+                        max_attempts = 3  # Set a maximum number of attempts
+                        while attempts < max_attempts:
+                            self.console.print("\n[bold blue]Translate to French:[/bold blue]")
+                            # Display Japanese with kanji if available
+                            kanji_display = f" [cyan][{word_pair['kanji']}][/cyan]" if pd.notna(word_pair['kanji']) else ""
+                            self.console.print(f"[bold green]{word_pair['japanese']}{kanji_display}[/bold green]\n")
+
+                            self.console.print("[dim]Available commands:[/dim]")
+                            self.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know\n")
+
+                            answer = Prompt.ask("Your answer")
+                            
+                            # Handle Vim-like commands
+                            if answer.startswith(':'):
+                                if answer == ':q':
+                                    self.save_progress()
+                                    self._git_commit()
+                                    exit(0)
+                                elif answer == ':m':
+                                    retry = False
+                                    break
+                                elif answer == ':h':
+                                    self.show_help()
+                                    continue
+                                elif answer == ':s':
+                                    self.show_word_statistics(word_pair)
+                                    continue
+                                elif answer == ':S':
+                                    self.show_progress()
+                                    continue
+                                elif answer == ':e':
+                                    if pd.notna(word_pair['example_sentence']) and word_pair['example_sentence'].strip():
+                                        example = word_pair['example_sentence']
+                                        # Get translation of example
+                                        try:
+                                            translation = self.translator.translate(example, src='ja', dest='fr')
+                                            self.console.print(f"\n[italic yellow]Example:[/italic yellow]")
+                                            self.console.print(f"[cyan]{example}[/cyan]")
+                                            self.console.print(f"[green]{translation.text}[/green]")
+                                        except Exception as e:
+                                            self.console.print(f"\n[italic yellow]Example: {example}[/italic yellow]")
+                                            self.console.print("[red]Translation unavailable[/red]")
+                                    else:
+                                        self.console.print("\n[yellow]No example available for this word[/yellow]")
+                                    continue
+                                elif answer == ':d':
+                                    self.console.print(f"[yellow]The answer is: [green]{word_pair['french']}[/green][/yellow]")
+                                    self.update_progress(word_pair['japanese'], False)  # Count as incorrect
+                                    self.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
+                                    self.console.print("\n[yellow]Let's try this word again...[/yellow]")
+                                    continue
+                                else:
+                                    self.console.print("[red]Unknown command. Type :h for help.[/red]")
+                                continue
+
+                            correct, note = self.check_answer(answer, word_pair['french'])
+                            if correct and not self.progress[word_pair['japanese']]['last_attempt_was_failure']:
+                                self.console.print("[bold green]Correct! ✓[/bold green]")
+                                if note:
+                                    self.console.print(note)
+                                retry = False
+                                self.update_progress(word_pair['japanese'], True)
+                            else:
+                                if correct and self.progress[word_pair['japanese']]['last_attempt_was_failure']:
+                                    self.console.print("[yellow]You need to get it right without seeing the answer first![/yellow]")
+                                else:
+                                    self.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
+                                self.console.print("\n[yellow]Let's try this word again...[/yellow]")
+                                self.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
+                                self.update_progress(word_pair['japanese'], False)
+
+                            self.update_progress(word_pair['japanese'], correct)
+                        
+                        if answer == ':q':  # Break out of main practice loop if user quit
+                            self.save_progress()
+                            self._git_commit()
+                            break
 
         except KeyboardInterrupt:
-            self.console.print("\n\n[yellow]Saving progress and exiting...[/yellow]")
+            self.console.print("\n\n[yellow]Saving progress and committing changes...[/yellow]")
             self.save_progress()
+            self._git_commit()
+            exit(0)
 
 def main():
     console = Console()
@@ -643,7 +787,6 @@ def main():
 
     learner = VocabularyLearner(csv_path)
     console.print("[bold blue]Welcome to the Vocabulary Learner![/bold blue]")
-    console.print("[yellow]Vim commands available! Type :h for help[/yellow]")
     learner.practice()
 
 if __name__ == "__main__":
