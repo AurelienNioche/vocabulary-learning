@@ -139,14 +139,14 @@ class VocabularyLearner:
     def load_vocabulary(self):
         """Load vocabulary from CSV file."""
         if not os.path.exists(self.csv_path):
-            self.vocabulary = pd.DataFrame(columns=['japanese', 'kanji', 'french'])
+            self.vocabulary = pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence'])
             self.vocabulary.to_csv(self.csv_path, index=False)
         else:
             self.vocabulary = pd.read_csv(self.csv_path)
             # Clean whitespace from entries
             self.vocabulary = self.vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
             # Remove any empty rows
-            self.vocabulary = self.vocabulary.dropna(subset=['japanese', 'french'])  # Allow empty kanji
+            self.vocabulary = self.vocabulary.dropna(subset=['japanese', 'french'])  # Allow empty kanji and example_sentence
 
     def load_progress(self):
         """Load learning progress from JSON file."""
@@ -682,8 +682,7 @@ class VocabularyLearner:
                             self.console.print("[yellow]No vocabulary words available. Please add some words to the CSV file.[/yellow]")
                             break
 
-                        # Keep asking the same word until correct or user quits
-                        retry = True
+                        # Initialize progress for new words
                         if word_pair['japanese'] not in self.progress:
                             self.progress[word_pair['japanese']] = {
                                 'attempts': 0,
@@ -692,9 +691,9 @@ class VocabularyLearner:
                                 'review_intervals': [],
                                 'last_attempt_was_failure': False
                             }
-                        attempts = 0
-                        max_attempts = 3  # Set a maximum number of attempts
-                        while attempts < max_attempts:
+
+                        got_correct = False
+                        while not got_correct:  # Keep asking until correct
                             self.console.print("\n[bold blue]Translate to French:[/bold blue]")
                             # Display Japanese with kanji if available
                             kanji_display = f" [cyan][{word_pair['kanji']}][/cyan]" if pd.notna(word_pair['kanji']) else ""
@@ -712,7 +711,7 @@ class VocabularyLearner:
                                     self._git_commit()
                                     exit(0)
                                 elif answer == ':m':
-                                    retry = False
+                                    got_correct = True
                                     break
                                 elif answer == ':h':
                                     self.show_help()
@@ -740,36 +739,31 @@ class VocabularyLearner:
                                     continue
                                 elif answer == ':d':
                                     self.console.print(f"[yellow]The answer is: [green]{word_pair['french']}[/green][/yellow]")
-                                    self.update_progress(word_pair['japanese'], False)  # Count as incorrect
+                                    self.update_progress(word_pair['japanese'], False)
                                     self.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
-                                    self.console.print("\n[yellow]Let's try this word again...[/yellow]")
+                                    self.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
+                                    input()
                                     continue
                                 else:
                                     self.console.print("[red]Unknown command. Type :h for help.[/red]")
                                 continue
 
                             correct, note = self.check_answer(answer, word_pair['french'])
-                            if correct and not self.progress[word_pair['japanese']]['last_attempt_was_failure']:
+                            if correct:
                                 self.console.print("[bold green]Correct! ✓[/bold green]")
                                 if note:
                                     self.console.print(note)
-                                retry = False
-                                self.update_progress(word_pair['japanese'], True)
+                                # Only update progress if it was the first try
+                                if not self.progress[word_pair['japanese']]['last_attempt_was_failure']:
+                                    self.update_progress(word_pair['japanese'], True)
+                                got_correct = True
+                                break
                             else:
-                                if correct and self.progress[word_pair['japanese']]['last_attempt_was_failure']:
-                                    self.console.print("[yellow]You need to get it right without seeing the answer first![/yellow]")
-                                else:
-                                    self.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
-                                self.console.print("\n[yellow]Let's try this word again...[/yellow]")
+                                self.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
+                                self.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
+                                input()
                                 self.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
                                 self.update_progress(word_pair['japanese'], False)
-
-                            self.update_progress(word_pair['japanese'], correct)
-                        
-                        if answer == ':q':  # Break out of main practice loop if user quit
-                            self.save_progress()
-                            self._git_commit()
-                            break
 
         except KeyboardInterrupt:
             self.console.print("\n\n[yellow]Saving progress and committing changes...[/yellow]")
@@ -783,11 +777,112 @@ def main():
 
     if not os.path.exists(csv_path):
         console.print("[yellow]Creating new vocabulary file...[/yellow]")
-        pd.DataFrame(columns=['japanese', 'kanji', 'french']).to_csv(csv_path, index=False)
+        pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence']).to_csv(csv_path, index=False)
 
     learner = VocabularyLearner(csv_path)
     console.print("[bold blue]Welcome to the Vocabulary Learner![/bold blue]")
-    learner.practice()
+    
+    # Skip menu and go directly to practice mode
+    learner.console.clear()
+    # Reload vocabulary before starting practice
+    learner.load_vocabulary()
+    learner.console.print(f"[green]Loaded {len(learner.vocabulary)} words from vocabulary file[/green]")
+    
+    learner.console.print("[bold blue]Practice Mode[/bold blue]\n")
+    learner.console.print("[dim]Available commands:[/dim]")
+    learner.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know")
+    
+    try:
+        while True:  # Practice loop
+            word_pair = learner.select_word()
+            if word_pair is None:
+                learner.console.print("[yellow]No vocabulary words available. Please add some words to the CSV file.[/yellow]")
+                break
+
+            # Initialize progress for new words
+            if word_pair['japanese'] not in learner.progress:
+                learner.progress[word_pair['japanese']] = {
+                    'attempts': 0,
+                    'successes': 0,
+                    'last_seen': datetime.now().isoformat(),
+                    'review_intervals': [],
+                    'last_attempt_was_failure': False
+                }
+
+            got_correct = False
+            while not got_correct:  # Keep asking until correct
+                learner.console.print("\n[bold blue]Translate to French:[/bold blue]")
+                # Display Japanese with kanji if available
+                kanji_display = f" [cyan][{word_pair['kanji']}][/cyan]" if pd.notna(word_pair['kanji']) else ""
+                learner.console.print(f"[bold green]{word_pair['japanese']}{kanji_display}[/bold green]\n")
+
+                answer = Prompt.ask("Your answer")
+                
+                # Handle Vim-like commands
+                if answer.startswith(':'):
+                    if answer == ':q':
+                        learner.save_progress()
+                        learner._git_commit()
+                        return
+                    elif answer == ':m':
+                        learner.practice()  # Go to full menu mode
+                        return
+                    elif answer == ':h':
+                        learner.show_help()
+                        continue
+                    elif answer == ':s':
+                        learner.show_word_statistics(word_pair)
+                        continue
+                    elif answer == ':S':
+                        learner.show_progress()
+                        continue
+                    elif answer == ':e':
+                        if pd.notna(word_pair['example_sentence']) and word_pair['example_sentence'].strip():
+                            example = word_pair['example_sentence']
+                            try:
+                                translation = learner.translator.translate(example, src='ja', dest='fr')
+                                learner.console.print(f"\n[italic yellow]Example:[/italic yellow]")
+                                learner.console.print(f"[cyan]{example}[/cyan]")
+                                learner.console.print(f"[green]{translation.text}[/green]")
+                            except Exception as e:
+                                learner.console.print(f"\n[italic yellow]Example: {example}[/italic yellow]")
+                                learner.console.print("[red]Translation unavailable[/red]")
+                        else:
+                            learner.console.print("\n[yellow]No example available for this word[/yellow]")
+                        continue
+                    elif answer == ':d':
+                        learner.console.print(f"[yellow]The answer is: [green]{word_pair['french']}[/green][/yellow]")
+                        learner.update_progress(word_pair['japanese'], False)
+                        learner.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
+                        learner.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
+                        input()
+                        continue
+                    else:
+                        learner.console.print("[red]Unknown command. Type :h for help.[/red]")
+                    continue
+
+                correct, note = learner.check_answer(answer, word_pair['french'])
+                if correct:
+                    learner.console.print("[bold green]Correct! ✓[/bold green]")
+                    if note:
+                        learner.console.print(note)
+                    # Only update progress if it was the first try
+                    if not learner.progress[word_pair['japanese']]['last_attempt_was_failure']:
+                        learner.update_progress(word_pair['japanese'], True)
+                    got_correct = True
+                    break
+                else:
+                    learner.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
+                    learner.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
+                    input()
+                    learner.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
+                    learner.update_progress(word_pair['japanese'], False)
+
+    except KeyboardInterrupt:
+        learner.console.print("\n\n[yellow]Saving progress and committing changes...[/yellow]")
+        learner.save_progress()
+        learner._git_commit()
+        exit(0)
 
 if __name__ == "__main__":
     main() 
