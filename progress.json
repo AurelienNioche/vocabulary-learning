@@ -170,5 +170,12 @@
       0.0038394697222222224
     ],
     "last_attempt_was_failure": true
+  },
+  "むりょう": {
+    "attempts": 0,
+    "successes": 0,
+    "last_seen": "2025-02-06T22:05:08.507473",
+    "review_intervals": [],
+    "last_attempt_was_failure": false
   }
 }
