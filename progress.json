@@ -41,20 +41,22 @@
     "last_attempt_was_failure": false
   },
   "いいえ": {
-    "attempts": 2,
-    "successes": 2,
-    "last_seen": "2025-02-04T18:03:21.611456",
+    "attempts": 3,
+    "successes": 3,
+    "last_seen": "2025-02-07T19:30:53.430716",
     "review_intervals": [
-      0.24404315277777777
+      0.24404315277777777,
+      73.4588386775
     ],
     "last_attempt_was_failure": false
   },
   "おはよう": {
-    "attempts": 2,
-    "successes": 2,
-    "last_seen": "2025-02-04T18:01:30.528036",
+    "attempts": 3,
+    "successes": 3,
+    "last_seen": "2025-02-07T19:30:50.408899",
     "review_intervals": [
-      0.07638074805555554
+      0.07638074805555554,
+      73.48885578944444
     ],
     "last_attempt_was_failure": false
   },
@@ -183,6 +185,69 @@
     "last_seen": "2025-02-07T19:28:54.621764",
     "review_intervals": [
       21.396142848333334
+    ],
+    "last_attempt_was_failure": true
+  },
+  "ふく": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-07T19:31:05.279684",
+    "review_intervals": [
+      0.0032890088888888887
+    ],
+    "last_attempt_was_failure": false
+  },
+  "かいもの": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-07T19:31:27.364011",
+    "review_intervals": [
+      0.006133068055555556
+    ],
+    "last_attempt_was_failure": false
+  },
+  "むかえにくる": {
+    "attempts": 1,
+    "successes": 0,
+    "last_seen": "2025-02-07T20:32:26.206897",
+    "review_intervals": [
+      1.0163429116666667
+    ],
+    "last_attempt_was_failure": true
+  },
+  "いわう": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-07T20:32:52.375953",
+    "review_intervals": [
+      0.0043505838888888895
+    ],
+    "last_attempt_was_failure": false
+  },
+  "ながいき": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-07T20:32:59.243232",
+    "review_intervals": [
+      0.0019049355555555555
+    ],
+    "last_attempt_was_failure": false
+  },
+  "むかし": {
+    "attempts": 1,
+    "successes": 1,
+    "last_seen": "2025-02-07T20:33:04.930206",
+    "review_intervals": [
+      0.0015770405555555556
+    ],
+    "last_attempt_was_failure": false
+  },
+  "たなばた": {
+    "attempts": 1,
+    "successes": 0,
+    "last_seen": "2025-02-07T20:33:15.516858",
+    "review_intervals": [
+      0.0029380730555555556
     ],
     "last_attempt_was_failure": true
   }
