@@ -176,3 +176,16 @@ scans
 
 # Codebuddy
 .codebuddy
+
+# Environment variables
+.env
+
+# Firebase
+firebase-credentials.json
+
+# Local development
+.vscode/
+.idea/
+
+# Progress file (now using Firebase)
+progress.json

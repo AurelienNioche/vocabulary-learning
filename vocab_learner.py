@@ -14,14 +14,38 @@ import pykakasi
 import time
 import unicodedata
 import re
-import subprocess
 from difflib import SequenceMatcher
+from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials, db
 
 class VocabularyLearner:
     def __init__(self, csv_path, progress_file="progress.json"):
         self.csv_path = csv_path
         self.progress_file = progress_file
         self.console = Console()
+        
+        # Initialize Firebase
+        load_dotenv()
+        cred_path = os.path.expandvars(os.getenv('FIREBASE_CREDENTIALS_PATH'))
+        
+        if not os.path.exists(cred_path):
+            self.console.print(f"[red]Error: Firebase credentials not found at {cred_path}[/red]")
+            exit(1)
+            
+        try:
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://vocabulary-learning-9bd6e-default-rtdb.firebaseio.com/'
+            })
+            self.db_ref = db.reference('/progress')
+            self.console.print("[green]Successfully connected to Firebase![/green]")
+        except Exception as e:
+            self.console.print(f"[red]Failed to initialize Firebase: {str(e)}[/red]")
+            # Fallback to local file if Firebase fails
+            self.db_ref = None
+            self.console.print("[yellow]Falling back to local storage...[/yellow]")
+        
         self.load_vocabulary()
         self.load_progress()
         # Setup signal handler for graceful exit
@@ -41,8 +65,6 @@ class VocabularyLearner:
         self.kks = pykakasi.kakasi()
         # Initialize translator
         self.translator = Translator()
-        # Initialize git status
-        self.git_available = self._check_git_repo()
         # Common romaji to hiragana mappings
         self.romaji_to_hiragana = {
             'a': 'あ', 'i': 'い', 'u': 'う', 'e': 'え', 'o': 'お',
@@ -78,62 +100,10 @@ class VocabularyLearner:
             'wo': 'を',
         }
 
-    def _check_git_repo(self):
-        """Check if we're in a git repository."""
-        try:
-            subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'], 
-                         stdout=subprocess.PIPE, 
-                         stderr=subprocess.PIPE, 
-                         check=True)
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            return False
-
-    def _git_commit(self):
-        """Commit changes to git if in a git repository and push to remote."""
-        if not self.git_available:
-            return
-
-        try:
-            # Check if there are any changes to commit
-            status = subprocess.run(['git', 'status', '--porcelain', self.csv_path, self.progress_file],
-                                 check=True,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 text=True)
-            
-            # If no changes, return early
-            if not status.stdout.strip():
-                return
-            
-            # Add all changes
-            subprocess.run(['git', 'add', self.csv_path, self.progress_file], 
-                         check=True, 
-                         stdout=subprocess.PIPE, 
-                         stderr=subprocess.PIPE)
-            
-            # Create commit with timestamp
-            commit_message = f"Update vocabulary progress - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            subprocess.run(['git', 'commit', '-m', commit_message], 
-                         check=True,
-                         stdout=subprocess.PIPE, 
-                         stderr=subprocess.PIPE)
-            
-            # Push changes to remote
-            subprocess.run(['git', 'push'], 
-                         check=True,
-                         stdout=subprocess.PIPE, 
-                         stderr=subprocess.PIPE)
-            
-            self.console.print("[green]Changes committed and pushed to git repository[/green]")
-        except subprocess.CalledProcessError as e:
-            self.console.print(f"[yellow]Note: Git operation failed - {str(e)}[/yellow]")
-
     def signal_handler(self, signum, frame):
         """Handle Ctrl+C gracefully"""
-        self.console.print("\n\n[yellow]Saving progress and committing changes...[/yellow]")
+        self.console.print("\n\n[yellow]Saving progress...[/yellow]")
         self.save_progress()
-        self._git_commit()
         exit(0)
 
     def load_vocabulary(self):
@@ -149,7 +119,17 @@ class VocabularyLearner:
             self.vocabulary = self.vocabulary.dropna(subset=['japanese', 'french'])  # Allow empty kanji and example_sentence
 
     def load_progress(self):
-        """Load learning progress from JSON file."""
+        """Load learning progress from Firebase or local JSON file."""
+        if self.db_ref is not None:
+            try:
+                # Try to load from Firebase
+                self.progress = self.db_ref.get() or {}
+                return
+            except Exception as e:
+                self.console.print(f"[yellow]Failed to load from Firebase: {str(e)}[/yellow]")
+                self.console.print("[yellow]Falling back to local file...[/yellow]")
+        
+        # Fallback to local file
         if os.path.exists(self.progress_file):
             with open(self.progress_file, 'r') as f:
                 self.progress = json.load(f)
@@ -163,9 +143,18 @@ class VocabularyLearner:
             self.progress = {}
 
     def save_progress(self):
-        """Save learning progress to JSON file with nice formatting."""
+        """Save learning progress to Firebase and local backup."""
+        # Always save to local file as backup
         with open(self.progress_file, 'w', encoding='utf-8') as f:
             json.dump(self.progress, f, ensure_ascii=False, indent=2)
+        
+        # Try to save to Firebase
+        if self.db_ref is not None:
+            try:
+                self.db_ref.set(self.progress)
+            except Exception as e:
+                self.console.print(f"[yellow]Failed to save to Firebase: {str(e)}[/yellow]")
+                self.console.print("[yellow]Progress saved to local file only.[/yellow]")
 
     def show_progress(self):
         """Display progress statistics in a nice table format."""
@@ -173,8 +162,9 @@ class VocabularyLearner:
         table.add_column("Japanese", style="bold")
         table.add_column("Kanji", style="bold cyan")
         table.add_column("French", style="bold green")
+        table.add_column("Status", style="bold", justify="right")
         table.add_column("Success Rate", justify="right")
-        table.add_column("Total Attempts", justify="right")
+        table.add_column("Attempts", justify="right")
         table.add_column("Last Practice", justify="right")
 
         for _, row in self.vocabulary.iterrows():
@@ -187,7 +177,20 @@ class VocabularyLearner:
                 'last_seen': 'Never'
             })
             
-            success_rate = (stats['successes'] / stats['attempts'] * 100) if stats['attempts'] > 0 else 0
+            attempts = stats['attempts']
+            success_rate = (stats['successes'] / attempts * 100) if attempts > 0 else 0
+            
+            # Determine status
+            if attempts >= 10:
+                if success_rate >= 80:
+                    status = "[green]Mastered[/green]"
+                elif success_rate >= 60:
+                    status = "[yellow]Learning[/yellow]"
+                else:
+                    status = "[red]Needs Work[/red]"
+            else:
+                status = f"[blue]{attempts}/10[/blue]"
+            
             last_seen = stats['last_seen']
             if last_seen != 'Never':
                 last_seen_date = datetime.fromisoformat(last_seen)
@@ -203,22 +206,53 @@ class VocabularyLearner:
                 japanese,
                 kanji,
                 french,
+                status,
                 f"{success_rate:.1f}%",
-                str(stats['attempts']),
+                str(attempts),
                 last_seen
             )
 
         self.console.print(table)
 
+    def count_active_learning_words(self):
+        """Count how many words are currently being actively learned (success rate < 80%)."""
+        active_count = 0
+        for word, data in self.progress.items():
+            attempts = data.get('attempts', 0)
+            successes = data.get('successes', 0)
+            if attempts >= 10:  # Changed from 3 to 10 attempts minimum
+                success_rate = (successes / attempts) * 100
+                if success_rate < 80:  # Changed from 90% to 80%
+                    active_count += 1
+        return active_count
+
     def calculate_priority(self, word_data):
         """Calculate priority score for a word based on memory strength and spaced repetition principles."""
+        MAX_ACTIVE_WORDS = 8  # Maximum number of words to learn at once
+        MIN_ATTEMPTS = 10  # Minimum attempts before considering mastery
+        
+        # If this is a new word, check if we're already at max active words
         if word_data is None:
-            return 1.0  # Highest priority for new words
+            if self.count_active_learning_words() >= MAX_ACTIVE_WORDS:
+                return 0.0  # Don't introduce new words yet
+            return 1.0  # Highest priority for new words if under the limit
         
         # Get basic stats
         successes = word_data.get('successes', 0)
-        attempts = word_data.get('attempts', 1)
-        success_rate = successes / attempts
+        attempts = word_data.get('attempts', 0)
+        # Avoid division by zero for new words
+        success_rate = (successes / max(attempts, 1)) * 100
+        
+        # Different priority levels based on mastery
+        if attempts >= MIN_ATTEMPTS:  # Only apply mastery levels after enough attempts
+            if success_rate >= 80:  # Mastered
+                return 0.1 + random.uniform(0, 0.1)  # Very low priority
+            elif success_rate >= 60:  # Learning well
+                return 0.3 + random.uniform(0, 0.1)  # Medium priority
+            else:  # Needs work
+                return 0.7 + random.uniform(0, 0.1)  # High priority
+        else:  # Not enough attempts yet
+            return 0.8 + random.uniform(0, 0.1)  # High priority for new words
         
         # Calculate time since last review
         last_seen = datetime.fromisoformat(word_data.get('last_seen', datetime.now().isoformat()))
@@ -234,7 +268,7 @@ class VocabularyLearner:
         
         # Calculate memory strength decay
         # Using Ebbinghaus forgetting curve: strength = e^(-time/decay_factor)
-        decay_factor = optimal_interval * (1 + success_rate)  # Decay factor increases with success
+        decay_factor = optimal_interval * (1 + success_rate/100)  # Decay factor increases with success
         memory_strength = math.exp(-hours_since_last / decay_factor)
         
         # Priority is higher when:
@@ -243,7 +277,7 @@ class VocabularyLearner:
         # 3. Time since last review is close to optimal interval
         priority = (
             (1 - memory_strength) * 0.5 +  # Memory decay component
-            (1 - success_rate) * 0.3 +     # Success rate component
+            (1 - success_rate/100) * 0.3 +     # Success rate component
             (abs(hours_since_last - optimal_interval) / optimal_interval) * 0.2  # Timing component
         )
         
@@ -272,7 +306,7 @@ class VocabularyLearner:
         return self.vocabulary[self.vocabulary['japanese'] == selected_word].iloc[0]
 
     def update_progress(self, word, success):
-        """Update progress for a given word."""
+        """Update progress for a given word and sync with Firebase."""
         if word not in self.progress:
             self.progress[word] = {
                 'attempts': 0,
@@ -295,6 +329,8 @@ class VocabularyLearner:
         if success:
             self.progress[word]['successes'] += 1
         self.progress[word]['last_seen'] = datetime.now().isoformat()
+        
+        # Save progress immediately after update
         self.save_progress()
         self.last_save_time = datetime.now()
 
@@ -546,25 +582,44 @@ class VocabularyLearner:
         
         # First try exact match with any of the possible answers
         if any(user_answer == ans.lower() for ans in correct_answers):
+            # If there are multiple answers, show them all after success
+            if len(correct_answers) > 1:
+                formatted_answers = ' / '.join(f"[green]{ans}[/green]" for ans in correct_answers)
+                return True, f"[yellow]Note: Any of these answers would be correct: {formatted_answers}[/yellow]"
             return True, None
             
-        # Then try normalized match (without accents)
+        # Then try normalized match (without accents) and typo detection
         user_normalized = self.normalize_french(user_answer)
+        
+        # First check for exact matches without accents
         for ans in correct_answers:
             ans_normalized = self.normalize_french(ans)
             if user_normalized == ans_normalized:
                 return False, f"[yellow]Almost! You wrote '{user_answer}' but the correct spelling is '{ans}'[/yellow]"
-            
-            # Check for minor typos
-            if self._is_minor_typo(user_normalized, ans_normalized):
+        
+        # Then check for typos, including in phrases
+        for ans in correct_answers:
+            ans_normalized = self.normalize_french(ans)
+            # For phrases, check if all words are close matches
+            if ' ' in user_normalized and ' ' in ans_normalized:
+                user_words = user_normalized.split()
+                ans_words = ans_normalized.split()
+                if len(user_words) == len(ans_words) and all(
+                    self._is_minor_typo(uw, aw) for uw, aw in zip(user_words, ans_words)
+                ):
+                    if Confirm.ask(f"\n[yellow]Did you mean '[green]{ans}[/green]'? Count as correct?[/yellow]"):
+                        if len(correct_answers) > 1:
+                            formatted_answers = ' / '.join(f"[green]{a}[/green]" for a in correct_answers)
+                            return True, f"[yellow]Noted! The correct spelling is '{ans}'\nAny of these answers would be correct: {formatted_answers}[/yellow]"
+                        return True, f"[yellow]Noted! The correct spelling is '[green]{ans}[/green]'[/yellow]"
+            # For single words, check as before
+            elif self._is_minor_typo(user_normalized, ans_normalized):
                 if Confirm.ask(f"\n[yellow]Did you mean '[green]{ans}[/green]'? Count as correct?[/yellow]"):
+                    if len(correct_answers) > 1:
+                        formatted_answers = ' / '.join(f"[green]{a}[/green]" for a in correct_answers)
+                        return True, f"[yellow]Noted! The correct spelling is '{ans}'\nAny of these answers would be correct: {formatted_answers}[/yellow]"
                     return True, f"[yellow]Noted! The correct spelling is '[green]{ans}[/green]'[/yellow]"
         
-        # If multiple answers were possible, show them all
-        if len(correct_answers) > 1:
-            formatted_answers = ' / '.join(f"[green]{ans}[/green]" for ans in correct_answers)
-            self.console.print(f"[yellow]Note: Any of these answers would be correct: {formatted_answers}[/yellow]")
-            
         return False, None
 
     def show_word_statistics(self, word_pair):
@@ -637,7 +692,6 @@ class VocabularyLearner:
                             break
                         elif choice == ':q':
                             self.save_progress()
-                            self._git_commit()
                             return
                         elif choice == ':s' or choice == ':S':
                             self.show_progress()
@@ -654,7 +708,6 @@ class VocabularyLearner:
                         
                     if choice == "4":
                         self.save_progress()
-                        self._git_commit()
                         return
                     elif choice == "2":
                         self.show_progress()
@@ -708,8 +761,7 @@ class VocabularyLearner:
                             if answer.startswith(':'):
                                 if answer == ':q':
                                     self.save_progress()
-                                    self._git_commit()
-                                    exit(0)
+                                    return
                                 elif answer == ':m':
                                     got_correct = True
                                     break
@@ -766,9 +818,8 @@ class VocabularyLearner:
                                 self.update_progress(word_pair['japanese'], False)
 
         except KeyboardInterrupt:
-            self.console.print("\n\n[yellow]Saving progress and committing changes...[/yellow]")
+            self.console.print("\n\n[yellow]Saving progress...[/yellow]")
             self.save_progress()
-            self._git_commit()
             exit(0)
 
 def main():
@@ -822,7 +873,6 @@ def main():
                 if answer.startswith(':'):
                     if answer == ':q':
                         learner.save_progress()
-                        learner._git_commit()
                         return
                     elif answer == ':m':
                         learner.practice()  # Go to full menu mode
@@ -879,9 +929,8 @@ def main():
                     learner.update_progress(word_pair['japanese'], False)
 
     except KeyboardInterrupt:
-        learner.console.print("\n\n[yellow]Saving progress and committing changes...[/yellow]")
+        learner.console.print("\n\n[yellow]Saving progress...[/yellow]")
         learner.save_progress()
-        learner._git_commit()
         exit(0)
 
 if __name__ == "__main__":
