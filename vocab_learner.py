@@ -17,37 +17,125 @@ import re
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import credentials, db
+from firebase_admin import credentials, db, auth
 
 class VocabularyLearner:
-    def __init__(self, csv_path, progress_file="progress.json"):
-        self.csv_path = csv_path
-        self.progress_file = progress_file
+    def __init__(self, vocab_file="data/vocabulary.json", progress_file="data/progress.json"):
         self.console = Console()
+        self.console.print("\n[dim]" + "="*50 + "[/dim]")
+        self.console.print("[bold blue]=== Starting Initialization ===[/bold blue]")
+        self.console.print("[dim gray]1. Basic setup...[/dim gray]")
         
-        # Initialize Firebase
+        # Create data directory if it doesn't exist
+        data_dir = os.path.dirname(vocab_file)
+        if not os.path.exists(data_dir):
+            self.console.print("[dim gray]Creating data directory...[/dim gray]")
+            os.makedirs(data_dir, exist_ok=True)
+            self.console.print("[dim gray]✓ Data directory created[/dim gray]")
+        
+        self.vocab_file = vocab_file
+        self.progress_file = progress_file
+        self.db_ref = None
+        self.vocab_ref = None
+        self.user_id = None
+        
+        self.console.print("\n[dim gray]2. Loading environment variables...[/dim gray]")
         load_dotenv()
         cred_path = os.path.expandvars(os.getenv('FIREBASE_CREDENTIALS_PATH'))
+        self.console.print(f"[dim gray]Credentials path: {cred_path}[/dim gray]")
         
         if not os.path.exists(cred_path):
+            self.console.print("[red]ERROR: Credentials file not found![/red]")
             self.console.print(f"[red]Error: Firebase credentials not found at {cred_path}[/red]")
-            exit(1)
-            
-        try:
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://vocabulary-learning-9bd6e-default-rtdb.firebaseio.com/'
-            })
-            self.db_ref = db.reference('/progress')
-            self.console.print("[green]Successfully connected to Firebase![/green]")
-        except Exception as e:
-            self.console.print(f"[red]Failed to initialize Firebase: {str(e)}[/red]")
-            # Fallback to local file if Firebase fails
-            self.db_ref = None
             self.console.print("[yellow]Falling back to local storage...[/yellow]")
+        else:
+            self.console.print("\n[dim gray]3. Reading credentials file...[/dim gray]")
+            try:
+                # Initialize Firebase with a timeout
+                self.console.print("[dim gray]3.1. Loading credentials from file...[/dim gray]")
+                cred = credentials.Certificate(cred_path)
+                
+                self.console.print("\n[dim gray]4. Initializing Firebase app...[/dim gray]")
+                try:
+                    app = firebase_admin.get_app()
+                    self.console.print("[dim gray]4.1. Firebase app already initialized[/dim gray]")
+                except ValueError:
+                    self.console.print("[dim gray]4.2. Creating new Firebase app...[/dim gray]")
+                    app = firebase_admin.initialize_app(cred, {
+                        'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
+                    })
+                    self.console.print("[dim gray]4.3. Firebase app created successfully[/dim gray]")
+                
+                self.console.print("\n[dim gray]5. Getting user credentials...[/dim gray]")
+                email = os.getenv('FIREBASE_USER_EMAIL')
+                password = os.getenv('FIREBASE_USER_PASSWORD')
+                self.console.print(f"[dim gray]5.1. Email configured: {email is not None}[/dim gray]")
+                self.console.print(f"[dim gray]5.2. Password configured: {password is not None}[/dim gray]")
+                
+                if not email or not password:
+                    self.console.print("[red]ERROR: Missing user credentials in .env![/red]")
+                    self.console.print("[red]Error: Firebase user credentials not found in .env file[/red]")
+                    self.console.print("[yellow]Falling back to local storage...[/yellow]")
+                else:
+                    self.console.print("\n[dim gray]6. Authenticating user...[/dim gray]")
+                    try:
+                        self.console.print(f"[dim gray]6.1. Looking up user: {email}[/dim gray]")
+                        user = auth.get_user_by_email(email)
+                        self.user_id = user.uid
+                        self.console.print(f"[dim gray]6.2. User found! UID: {self.user_id}[/dim gray]")
+                        
+                        self.console.print("\n[dim gray]7. Setting up database...[/dim gray]")
+                        self.db_ref = db.reference(f'/progress/{self.user_id}')
+                        self.vocab_ref = db.reference(f'/vocabulary/{self.user_id}')
+                        
+                        self.console.print("\n[dim gray]8. Testing database connection...[/dim gray]")
+                        try:
+                            # Test write
+                            test_ref = self.db_ref.child('_connection_test')
+                            test_data = {
+                                'timestamp': datetime.now().isoformat(),
+                                'test_value': 'test_connection'
+                            }
+                            self.console.print("[dim gray]8.1. Attempting to write test data...[/dim gray]")
+                            test_ref.set(test_data)
+                            
+                            # Verify write by reading back
+                            self.console.print("[dim gray]8.2. Verifying data write...[/dim gray]")
+                            read_data = test_ref.get()
+                            if read_data and 'test_value' in read_data:
+                                self.console.print("[dim gray]8.3. Database write/read test successful![/dim gray]")
+                                # Clean up test data
+                                test_ref.delete()
+                                self.console.print("\n[green]✓ Successfully connected to Firebase![/green]")
+                                self.console.print(f"[green]✓ Authenticated as {email}[/green]")
+                            else:
+                                raise Exception("Failed to verify test data in database")
+                        except Exception as e:
+                            self.console.print(f"[red]ERROR: Database test failed: {str(e)}[/red]")
+                            self.console.print("[yellow]Database URL: {os.getenv('FIREBASE_DATABASE_URL')}[/yellow]")
+                            self.console.print("[yellow]Falling back to local storage...[/yellow]")
+                            self.db_ref = None
+                            
+                    except auth.UserNotFoundError:
+                        self.console.print(f"[red]ERROR: User not found: {email}[/red]")
+                        self.console.print("[red]Error: User not found in Firebase Authentication[/red]")
+                        self.console.print("[yellow]Falling back to local storage...[/yellow]")
+                    except Exception as e:
+                        self.console.print(f"[red]ERROR during authentication: {str(e)}[/red]")
+                        self.console.print(f"[red]Authentication error: {str(e)}[/red]")
+                        self.console.print("[yellow]Falling back to local storage...[/yellow]")
+                    
+            except Exception as e:
+                self.console.print(f"[red]ERROR during Firebase setup: {str(e)}[/red]")
+                self.console.print(f"[red]Failed to initialize Firebase: {str(e)}[/red]")
+                self.console.print("[yellow]Falling back to local storage...[/yellow]")
         
+        self.console.print("\n[dim gray]9. Loading vocabulary...[/dim gray]")
         self.load_vocabulary()
+        self.console.print("\n[dim gray]10. Loading progress...[/dim gray]")
         self.load_progress()
+        self.console.print("\n[bold blue]=== Initialization Complete ===[/bold blue]")
+        self.console.print("[dim]" + "="*50 + "[/dim]\n")
         # Setup signal handler for graceful exit
         signal.signal(signal.SIGINT, self.signal_handler)
         # Vim-like commands
@@ -107,39 +195,98 @@ class VocabularyLearner:
         exit(0)
 
     def load_vocabulary(self):
-        """Load vocabulary from CSV file."""
-        if not os.path.exists(self.csv_path):
-            self.vocabulary = pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence'])
-            self.vocabulary.to_csv(self.csv_path, index=False)
+        """Load vocabulary from Firebase or local JSON file."""
+        if self.vocab_ref is not None:
+            try:
+                # Try to load from Firebase
+                self.console.print("[dim gray]Loading vocabulary from Firebase...[/dim gray]")
+                vocab_data = self.vocab_ref.get()
+                if vocab_data:
+                    # Convert Firebase data to DataFrame
+                    self.vocabulary = pd.DataFrame(vocab_data.values())
+                    # Save to JSON as backup
+                    with open(self.vocab_file, 'w', encoding='utf-8') as f:
+                        json.dump(vocab_data, f, ensure_ascii=False, indent=2)
+                    self.console.print("[dim gray]✓ Vocabulary loaded from Firebase[/dim gray]")
+                    return
+            except Exception as e:
+                self.console.print(f"[yellow]Failed to load vocabulary from Firebase: {str(e)}[/yellow]")
+                self.console.print("[yellow]Falling back to local JSON...[/yellow]")
+
+        # Fallback to JSON file
+        if not os.path.exists(self.vocab_file):
+            # Create empty vocabulary
+            empty_vocab = {'words': []}
+            with open(self.vocab_file, 'w', encoding='utf-8') as f:
+                json.dump(empty_vocab, f, ensure_ascii=False, indent=2)
+            self.vocabulary = pd.DataFrame(columns=['hiragana', 'kanji', 'french', 'example_sentence'])
         else:
-            self.vocabulary = pd.read_csv(self.csv_path)
+            try:
+                with open(self.vocab_file, 'r', encoding='utf-8') as f:
+                    vocab_data = json.load(f)
+                    if isinstance(vocab_data, dict) and 'words' in vocab_data:
+                        # New JSON format
+                        self.vocabulary = pd.DataFrame(vocab_data['words'])
+                    else:
+                        # Old format or Firebase format
+                        self.vocabulary = pd.DataFrame(vocab_data.values())
+            except Exception as e:
+                self.console.print(f"[yellow]Error loading vocabulary file: {str(e)}[/yellow]")
+                self.vocabulary = pd.DataFrame(columns=['hiragana', 'kanji', 'french', 'example_sentence'])
+            
             # Clean whitespace from entries
             self.vocabulary = self.vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
             # Remove any empty rows
-            self.vocabulary = self.vocabulary.dropna(subset=['japanese', 'french'])  # Allow empty kanji and example_sentence
+            self.vocabulary = self.vocabulary.dropna(subset=['hiragana', 'french'])
+            
+            # Try to sync with Firebase if available
+            if self.vocab_ref is not None:
+                try:
+                    # Convert DataFrame to dict for Firebase
+                    vocab_dict = {
+                        f"word_{i}": row.to_dict()
+                        for i, row in self.vocabulary.iterrows()
+                    }
+                    self.vocab_ref.set(vocab_dict)
+                    self.console.print("[dim gray]✓ Vocabulary synced to Firebase[/dim gray]")
+                except Exception as e:
+                    self.console.print(f"[yellow]Failed to sync vocabulary to Firebase: {str(e)}[/yellow]")
 
     def load_progress(self):
         """Load learning progress from Firebase or local JSON file."""
+        print("Starting load_progress...")  # Debug print
         if self.db_ref is not None:
             try:
-                # Try to load from Firebase
+                print("Attempting to load from Firebase...")  # Debug print
+                # Try to load from Firebase with a timeout
                 self.progress = self.db_ref.get() or {}
+                print("Successfully loaded from Firebase")  # Debug print
                 return
             except Exception as e:
+                print(f"Failed to load from Firebase: {str(e)}")  # Debug print
                 self.console.print(f"[yellow]Failed to load from Firebase: {str(e)}[/yellow]")
                 self.console.print("[yellow]Falling back to local file...[/yellow]")
+        else:
+            print("No Firebase reference, using local file")  # Debug print
         
         # Fallback to local file
+        print("Loading from local file...")  # Debug print
         if os.path.exists(self.progress_file):
-            with open(self.progress_file, 'r') as f:
-                self.progress = json.load(f)
-                # Migrate old progress data to new format
-                for word in self.progress:
-                    if 'review_intervals' not in self.progress[word]:
-                        self.progress[word]['review_intervals'] = []
-                    if 'last_attempt_was_failure' not in self.progress[word]:
-                        self.progress[word]['last_attempt_was_failure'] = False
+            try:
+                with open(self.progress_file, 'r') as f:
+                    self.progress = json.load(f)
+                    # Migrate old progress data to new format
+                    for word in self.progress:
+                        if 'review_intervals' not in self.progress[word]:
+                            self.progress[word]['review_intervals'] = []
+                        if 'last_attempt_was_failure' not in self.progress[word]:
+                            self.progress[word]['last_attempt_was_failure'] = False
+                print("Successfully loaded from local file")  # Debug print
+            except Exception as e:
+                print(f"Error loading local file: {str(e)}")  # Debug print
+                self.progress = {}
         else:
+            print("No local file found, starting with empty progress")  # Debug print
             self.progress = {}
 
     def save_progress(self):
@@ -151,15 +298,32 @@ class VocabularyLearner:
         # Try to save to Firebase
         if self.db_ref is not None:
             try:
+                # Save the data
                 self.db_ref.set(self.progress)
+                
+                # Verify the save by reading back
+                saved_data = self.db_ref.get()
+                if not saved_data:
+                    raise Exception("Failed to verify saved data - read returned None")
+                
+                # Compare a few key fields to ensure data integrity
+                for word in self.progress:
+                    if word not in saved_data:
+                        raise Exception(f"Missing word '{word}' in saved data")
+                    if 'attempts' not in saved_data[word]:
+                        raise Exception(f"Missing 'attempts' field for word '{word}'")
+                
+                self.console.print("[dim gray]✓ Saved to Firebase[/dim gray]")
             except Exception as e:
                 self.console.print(f"[yellow]Failed to save to Firebase: {str(e)}[/yellow]")
                 self.console.print("[yellow]Progress saved to local file only.[/yellow]")
+                # If Firebase save fails, set db_ref to None to prevent further attempts
+                self.db_ref = None
 
     def show_progress(self):
         """Display progress statistics in a nice table format."""
         table = Table(title="Vocabulary Progress")
-        table.add_column("Japanese", style="bold")
+        table.add_column("Hiragana", style="bold")
         table.add_column("Kanji", style="bold cyan")
         table.add_column("French", style="bold green")
         table.add_column("Status", style="bold", justify="right")
@@ -168,10 +332,10 @@ class VocabularyLearner:
         table.add_column("Last Practice", justify="right")
 
         for _, row in self.vocabulary.iterrows():
-            japanese = row['japanese']
+            hiragana = row['hiragana']
             kanji = row['kanji'] if pd.notna(row['kanji']) else ""
             french = row['french']
-            stats = self.progress.get(japanese, {
+            stats = self.progress.get(hiragana, {
                 'attempts': 0,
                 'successes': 0,
                 'last_seen': 'Never'
@@ -203,7 +367,7 @@ class VocabularyLearner:
                     last_seen = f"{days_ago} days ago"
 
             table.add_row(
-                japanese,
+                hiragana,
                 kanji,
                 french,
                 status,
@@ -294,16 +458,16 @@ class VocabularyLearner:
         # Calculate priorities for all words
         word_priorities = []
         for _, row in self.vocabulary.iterrows():
-            japanese_word = row['japanese']
-            word_data = self.progress.get(japanese_word)
+            hiragana_word = row['hiragana']
+            word_data = self.progress.get(hiragana_word)
             priority = self.calculate_priority(word_data)
-            word_priorities.append((japanese_word, priority))
+            word_priorities.append((hiragana_word, priority))
 
         # Sort by priority and add some randomness
         word_priorities.sort(key=lambda x: x[1] + random.random() * 0.2, reverse=True)
         selected_word = word_priorities[0][0]
         
-        return self.vocabulary[self.vocabulary['japanese'] == selected_word].iloc[0]
+        return self.vocabulary[self.vocabulary['hiragana'] == selected_word].iloc[0]
 
     def update_progress(self, word, success):
         """Update progress for a given word and sync with Firebase."""
@@ -460,7 +624,7 @@ class VocabularyLearner:
         self.console.clear()
         self.console.print("[bold blue]Add New Vocabulary[/bold blue]")
         self.console.print("(Press Ctrl+C or type ':q' to return to menu)")
-        self.console.print("[yellow]You can enter Japanese text in any form:[/yellow]")
+        self.console.print("[yellow]You can enter hiragana text in any form:[/yellow]")
         self.console.print("- Hiragana (おう)")
         self.console.print("- Kanji (王)")
         self.console.print("- Romaji (ou)")
@@ -468,28 +632,28 @@ class VocabularyLearner:
         
         try:
             while True:
-                # Get Japanese word
-                japanese = Prompt.ask("\nEnter the Japanese word")
-                if japanese.lower() == ':q':
+                # Get hiragana word
+                hiragana = Prompt.ask("\nEnter the hiragana word")
+                if hiragana.lower() == ':q':
                     break
                 
-                # Handle mixed input format (e.g., "おう[王]")
-                kanji_match = re.search(r'\[(.*?)\]', japanese)
+                # Check for kanji in square brackets
+                kanji_match = re.search(r'\[(.*?)\]', hiragana)
                 if kanji_match:
-                    kanji_input = kanji_match.group(1)
-                    japanese = japanese.split('[')[0].strip()
+                    kanji = kanji_match.group(1)
+                    hiragana = hiragana.split('[')[0].strip()
                 else:
-                    kanji_input = None
+                    kanji = None
                 
                 # Convert input to different writing systems
-                conversions = self.convert_japanese_text(japanese)
+                conversions = self.convert_japanese_text(hiragana)
                 
                 # If kanji was provided in brackets, add it to conversions
-                if kanji_input:
-                    conversions['kanji'] = kanji_input
+                if kanji:
+                    conversions['kanji'] = kanji
                 
                 # Show all forms
-                table = Table(title="Japanese Forms")
+                table = Table(title="Writing Forms")
                 table.add_column("Writing System", style="bold")
                 table.add_column("Text", style="green")
                 for system, text in conversions.items():
@@ -497,22 +661,22 @@ class VocabularyLearner:
                 self.console.print(table)
                 
                 # Let user choose the main form to store
-                self.console.print("\nWhich form would you like to store as the main Japanese text?")
+                self.console.print("\nWhich form would you like to store as the main hiragana text?")
                 writing_system = Prompt.ask("Choose writing system", 
                                          choices=["hiragana", "katakana", "romaji", "kanji"],
                                          default="hiragana")
                 
-                japanese_main = conversions[writing_system]
+                hiragana_main = conversions[writing_system]
                 
                 # Check if word already exists
-                if not self.vocabulary[self.vocabulary['japanese'] == japanese_main].empty:
+                if not self.vocabulary[self.vocabulary['hiragana'] == hiragana_main].empty:
                     self.console.print("[red]This word already exists in the vocabulary![/red]")
                     continue
                 
                 # Get kanji (optional)
                 if writing_system != "kanji":
                     kanji_default = conversions.get('kanji', '')
-                    if kanji_default == japanese_main:
+                    if kanji_default == hiragana_main:
                         kanji_default = ''
                     
                     kanji = Prompt.ask(
@@ -524,10 +688,10 @@ class VocabularyLearner:
                     if kanji.strip() == '':
                         kanji = None
                 else:
-                    kanji = japanese  # Original input was kanji
+                    kanji = hiragana  # Original input was kanji
                 
                 # Get French translation with suggestion
-                suggested_translation = self.suggest_translation(japanese)
+                suggested_translation = self.suggest_translation(hiragana)
                 if suggested_translation:
                     self.console.print(f"\nSuggested translation: [cyan]{suggested_translation}[/cyan]")
                 
@@ -539,19 +703,20 @@ class VocabularyLearner:
                 # Confirm entry
                 self.console.print("\nNew vocabulary entry:")
                 kanji_display = f" [cyan][{kanji}][/cyan]" if kanji else ""
-                self.console.print(f"[green]{japanese_main}{kanji_display}[/green] → [yellow]{french}[/yellow]")
+                self.console.print(f"[green]{hiragana_main}{kanji_display}[/green] → [yellow]{french}[/yellow]")
                 
                 if Confirm.ask("\nAdd this entry?"):
                     # Add to DataFrame
                     new_entry = pd.DataFrame({
-                        'japanese': [japanese_main],
+                        'hiragana': [hiragana_main],
                         'kanji': [kanji],
-                        'french': [french]
+                        'french': [french],
+                        'example_sentence': ['']  # Add empty example sentence
                     })
                     self.vocabulary = pd.concat([self.vocabulary, new_entry], ignore_index=True)
                     
-                    # Save to CSV
-                    self.vocabulary.to_csv(self.csv_path, index=False)
+                    # Save vocabulary
+                    self.save_vocabulary()
                     self.console.print("[green]Entry added successfully![/green]")
                 
                 if not Confirm.ask("\nAdd another word?"):
@@ -624,11 +789,11 @@ class VocabularyLearner:
 
     def show_word_statistics(self, word_pair):
         """Display statistics for a specific word."""
-        table = Table(title=f"Statistics for {word_pair['japanese']}")
+        table = Table(title=f"Statistics for {word_pair['hiragana']}")
         table.add_column("Information", style="bold")
         table.add_column("Value", style="green")
 
-        stats = self.progress.get(word_pair['japanese'], {
+        stats = self.progress.get(word_pair['hiragana'], {
             'attempts': 0,
             'successes': 0,
             'last_seen': 'Never',
@@ -651,7 +816,7 @@ class VocabularyLearner:
         intervals = stats.get('review_intervals', [])
         avg_interval = sum(intervals) / len(intervals) if intervals else 0
 
-        table.add_row("Japanese", word_pair['japanese'])
+        table.add_row("Hiragana", word_pair['hiragana'])
         if pd.notna(word_pair['kanji']) and word_pair['kanji']:
             table.add_row("Kanji", word_pair['kanji'])
         table.add_row("French", word_pair['french'])
@@ -736,8 +901,8 @@ class VocabularyLearner:
                             break
 
                         # Initialize progress for new words
-                        if word_pair['japanese'] not in self.progress:
-                            self.progress[word_pair['japanese']] = {
+                        if word_pair['hiragana'] not in self.progress:
+                            self.progress[word_pair['hiragana']] = {
                                 'attempts': 0,
                                 'successes': 0,
                                 'last_seen': datetime.now().isoformat(),
@@ -747,13 +912,13 @@ class VocabularyLearner:
 
                         got_correct = False
                         while not got_correct:  # Keep asking until correct
-                            self.console.print("\n[bold blue]Translate to French:[/bold blue]")
+                            self.console.print("\n[dim]Available commands:[/dim]")
+                            self.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know\n")
+                            
+                            self.console.print("[bold blue]Translate to French:[/bold blue]")
                             # Display Japanese with kanji if available
                             kanji_display = f" [cyan][{word_pair['kanji']}][/cyan]" if pd.notna(word_pair['kanji']) else ""
-                            self.console.print(f"[bold green]{word_pair['japanese']}{kanji_display}[/bold green]\n")
-
-                            self.console.print("[dim]Available commands:[/dim]")
-                            self.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know\n")
+                            self.console.print(f"[bold green]{word_pair['hiragana']}{kanji_display}[/bold green]\n")
 
                             answer = Prompt.ask("Your answer")
                             
@@ -791,8 +956,8 @@ class VocabularyLearner:
                                     continue
                                 elif answer == ':d':
                                     self.console.print(f"[yellow]The answer is: [green]{word_pair['french']}[/green][/yellow]")
-                                    self.update_progress(word_pair['japanese'], False)
-                                    self.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
+                                    self.update_progress(word_pair['hiragana'], False)
+                                    self.progress[word_pair['hiragana']]['last_attempt_was_failure'] = True
                                     self.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
                                     input()
                                     continue
@@ -806,31 +971,56 @@ class VocabularyLearner:
                                 if note:
                                     self.console.print(note)
                                 # Only update progress if it was the first try
-                                if not self.progress[word_pair['japanese']]['last_attempt_was_failure']:
-                                    self.update_progress(word_pair['japanese'], True)
+                                if not self.progress[word_pair['hiragana']]['last_attempt_was_failure']:
+                                    self.update_progress(word_pair['hiragana'], True)
                                 got_correct = True
                                 break
                             else:
                                 self.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
                                 self.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
                                 input()
-                                self.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
-                                self.update_progress(word_pair['japanese'], False)
+                                self.progress[word_pair['hiragana']]['last_attempt_was_failure'] = True
+                                self.update_progress(word_pair['hiragana'], False)
 
         except KeyboardInterrupt:
             self.console.print("\n\n[yellow]Saving progress...[/yellow]")
             self.save_progress()
             exit(0)
 
+    def save_vocabulary(self):
+        """Save vocabulary to both JSON and Firebase."""
+        # Save to local JSON file
+        vocab_data = {
+            'words': self.vocabulary.to_dict('records')
+        }
+        with open(self.vocab_file, 'w', encoding='utf-8') as f:
+            json.dump(vocab_data, f, ensure_ascii=False, indent=2)
+        
+        # Try to save to Firebase
+        if self.vocab_ref is not None:
+            try:
+                # Convert DataFrame to dict for Firebase
+                vocab_dict = {
+                    f"word_{i}": row.to_dict()
+                    for i, row in self.vocabulary.iterrows()
+                }
+                self.vocab_ref.set(vocab_dict)
+                self.console.print("[dim gray]✓ Vocabulary synced to Firebase[/dim gray]")
+            except Exception as e:
+                self.console.print(f"[yellow]Failed to sync vocabulary to Firebase: {str(e)}[/yellow]")
+
 def main():
+    print("Starting main function...")  # Debug print
     console = Console()
-    csv_path = "vocabulary.csv"
+    vocab_file = "data/vocabulary.json"
 
-    if not os.path.exists(csv_path):
+    if not os.path.exists(vocab_file):
+        print("Creating new vocabulary file...")  # Debug print
         console.print("[yellow]Creating new vocabulary file...[/yellow]")
-        pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence']).to_csv(csv_path, index=False)
+        pd.DataFrame(columns=['hiragana', 'kanji', 'french', 'example_sentence']).to_json(vocab_file, orient='records')
 
-    learner = VocabularyLearner(csv_path)
+    print("Creating VocabularyLearner instance...")  # Debug print
+    learner = VocabularyLearner(vocab_file)
     console.print("[bold blue]Welcome to the Vocabulary Learner![/bold blue]")
     
     # Skip menu and go directly to practice mode
@@ -851,8 +1041,8 @@ def main():
                 break
 
             # Initialize progress for new words
-            if word_pair['japanese'] not in learner.progress:
-                learner.progress[word_pair['japanese']] = {
+            if word_pair['hiragana'] not in learner.progress:
+                learner.progress[word_pair['hiragana']] = {
                     'attempts': 0,
                     'successes': 0,
                     'last_seen': datetime.now().isoformat(),
@@ -862,10 +1052,13 @@ def main():
 
             got_correct = False
             while not got_correct:  # Keep asking until correct
-                learner.console.print("\n[bold blue]Translate to French:[/bold blue]")
+                learner.console.print("\n[dim]Available commands:[/dim]")
+                learner.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know\n")
+                
+                learner.console.print("[bold blue]Translate to French:[/bold blue]")
                 # Display Japanese with kanji if available
                 kanji_display = f" [cyan][{word_pair['kanji']}][/cyan]" if pd.notna(word_pair['kanji']) else ""
-                learner.console.print(f"[bold green]{word_pair['japanese']}{kanji_display}[/bold green]\n")
+                learner.console.print(f"[bold green]{word_pair['hiragana']}{kanji_display}[/bold green]\n")
 
                 answer = Prompt.ask("Your answer")
                 
@@ -902,8 +1095,8 @@ def main():
                         continue
                     elif answer == ':d':
                         learner.console.print(f"[yellow]The answer is: [green]{word_pair['french']}[/green][/yellow]")
-                        learner.update_progress(word_pair['japanese'], False)
-                        learner.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
+                        learner.update_progress(word_pair['hiragana'], False)
+                        learner.progress[word_pair['hiragana']]['last_attempt_was_failure'] = True
                         learner.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
                         input()
                         continue
@@ -917,16 +1110,16 @@ def main():
                     if note:
                         learner.console.print(note)
                     # Only update progress if it was the first try
-                    if not learner.progress[word_pair['japanese']]['last_attempt_was_failure']:
-                        learner.update_progress(word_pair['japanese'], True)
+                    if not learner.progress[word_pair['hiragana']]['last_attempt_was_failure']:
+                        learner.update_progress(word_pair['hiragana'], True)
                     got_correct = True
                     break
                 else:
                     learner.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
                     learner.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
                     input()
-                    learner.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
-                    learner.update_progress(word_pair['japanese'], False)
+                    learner.progress[word_pair['hiragana']]['last_attempt_was_failure'] = True
+                    learner.update_progress(word_pair['hiragana'], False)
 
     except KeyboardInterrupt:
         learner.console.print("\n\n[yellow]Saving progress...[/yellow]")

@@ -8,11 +8,14 @@ version = "0.1.0"
 description = "A tool for learning vocabulary"
 requires-python = ">=3.8"
 dependencies = [
-    "numpy==1.24.3",
-    "pandas==2.0.3",
+    "numpy==2.2.2",
+    "pandas==2.2.3",
     "rich==13.5.2",
     "googletrans==3.1.0a0",
     "pykakasi==2.2.1",
+    "firebase-admin==6.6.0",
+    "python-dotenv==1.0.1",
+    "requests==2.32.3",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -21,9 +24,12 @@ packages = ["vocab_learner.py"]
 [tool.uv]
 install = [
     "uv",
-    "numpy==1.24.3",
-    "pandas==2.0.3",
+    "numpy==2.2.2",
+    "pandas==2.2.3",
     "rich==13.5.2",
     "googletrans==3.1.0a0",
     "pykakasi==2.2.1",
+    "firebase-admin==6.6.0",
+    "python-dotenv==1.0.1",
+    "requests==2.32.3",
 ]

@@ -43,6 +43,81 @@ An interactive command-line tool for learning Japanese vocabulary with spaced re
 - Detailed statistics for each word
 - Progress tracking with success rates
 
+### Firebase Setup
+
+1. Go to the [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project or select an existing one
+3. Set up Authentication:
+   - In the left sidebar, click "Authentication"
+   - Click "Get Started"
+   - Enable Email/Password authentication method
+   - Add your first user in the "Users" tab with your email and password
+
+4. Set up Environment Variables:
+   - Create a `.env` file in the project root if it doesn't exist
+   - Add the following lines:
+```
+FIREBASE_CREDENTIALS_PATH="${HOME}/.config/vocabulary-learning/vocabulary-learning-9bd6e-firebase-adminsdk-fbsvc-b89ec4a8a2.json"
+FIREBASE_USER_EMAIL="your-email@example.com"
+FIREBASE_USER_PASSWORD="your-password"
+FIREBASE_DATABASE_URL="https://vocabulary-learning-9bd6e-default-rtdb.europe-west1.firebasedatabase.app"
+```
+   - Replace `your-email@example.com` and `your-password` with your Firebase authentication credentials
+   - The `FIREBASE_CREDENTIALS_PATH` should point to your Firebase Admin SDK credentials file
+   - Make sure the `FIREBASE_DATABASE_URL` matches your database region (europe-west1 in this case)
+
+5. Set up Realtime Database:
+   - In the left sidebar, click "Realtime Database"
+   - Click "Create Database"
+   - Choose "Production mode"
+   - Select your preferred region (e.g., europe-west1)
+   - Click "Enable"
+
+6. Configure Security Rules:
+   - In Realtime Database, click the "Rules" tab
+   - Set the following security rules:
+```json
+{
+  "rules": {
+    "progress": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "$word": {
+          ".validate": "newData.hasChildren(['attempts', 'successes', 'last_seen', 'review_intervals', 'last_attempt_was_failure'])"
+        }
+      }
+    }
+  }
+}
+```
+
+7. Initialize Database Structure:
+   - In the Realtime Database interface, click the three dots (⋮) menu button
+   - Select "Import JSON"
+   - Upload the provided `example_firebase_data.json` file or copy its contents
+   - Replace `user_id` in the JSON with your actual Firebase user ID
+   - Click "Import"
+
+The database structure should look like:
+```
+progress/
+  └─ <your-firebase-user-id>/
+     └─ ねんまつねんし/
+        ├─ attempts: 0
+        ├─ successes: 0
+        ├─ last_seen: "2025-02-07T21:57:51.254923"
+        ├─ last_attempt_was_failure: false
+        └─ review_intervals: []
+```
+
+These security rules ensure that:
+- Each user can only read and write their own progress data
+- Data structure is validated to maintain consistency
+- No unauthorized access is possible
+
+This structure will be automatically updated as you use the vocabulary learning program.
+
 ## Installation
 
 1. Clone the repository:
