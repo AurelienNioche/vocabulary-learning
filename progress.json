@@ -87,32 +87,35 @@
     "last_attempt_was_failure": false
   },
   "しゅうかく": {
-    "attempts": 2,
+    "attempts": 3,
     "successes": 1,
-    "last_seen": "2025-02-06T14:47:48.795937",
+    "last_seen": "2025-02-07T19:20:01.283699",
     "review_intervals": [
       4.444444444444444e-09,
-      0.016569846944444445
+      0.016569846944444445,
+      28.53680215027778
     ],
-    "last_attempt_was_failure": false
+    "last_attempt_was_failure": true
   },
   "きゅうりょう": {
-    "attempts": 1,
+    "attempts": 2,
     "successes": 0,
-    "last_seen": "2025-02-06T14:47:57.897026",
+    "last_seen": "2025-02-07T19:19:46.552051",
     "review_intervals": [
-      4.444444444444444e-09
+      4.444444444444444e-09,
+      28.53018194583333
     ],
-    "last_attempt_was_failure": false
+    "last_attempt_was_failure": true
   },
   "かいてき": {
-    "attempts": 1,
+    "attempts": 2,
     "successes": 0,
-    "last_seen": "2025-02-06T14:48:08.753130",
+    "last_seen": "2025-02-07T19:19:17.566498",
     "review_intervals": [
-      5.2777777777777784e-09
+      5.2777777777777784e-09,
+      28.519114811111113
     ],
-    "last_attempt_was_failure": false
+    "last_attempt_was_failure": true
   },
   "とる": {
     "attempts": 1,
@@ -153,12 +156,13 @@
     "last_attempt_was_failure": false
   },
   "よろこぶ": {
-    "attempts": 2,
+    "attempts": 3,
     "successes": 0,
-    "last_seen": "2025-02-06T21:54:52.564891",
+    "last_seen": "2025-02-07T19:21:01.145915",
     "review_intervals": [
       0.0018217919444444444,
-      0.0034288338888888888
+      0.0034288338888888888,
+      21.43571694111111
     ],
     "last_attempt_was_failure": true
   },
