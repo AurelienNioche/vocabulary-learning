@@ -2,72 +2,107 @@ import os
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, db, auth
-from datetime import datetime
+from rich.console import Console
+from rich.table import Table
+from rich.tree import Tree
+from rich import print_json
+import json
 
-def test_firebase_connection():
-    print("\n=== Firebase Connection Test ===\n")
-    
-    # 1. Load environment variables
-    print("1. Loading environment variables...")
+def initialize_firebase():
+    """Initialize Firebase connection."""
     load_dotenv()
     cred_path = os.path.expandvars(os.getenv('FIREBASE_CREDENTIALS_PATH'))
-    db_url = os.getenv('FIREBASE_DATABASE_URL')
-    email = os.getenv('FIREBASE_USER_EMAIL')
-    password = os.getenv('FIREBASE_USER_PASSWORD')
     
-    print(f"Credentials path: {cred_path}")
-    print(f"Database URL: {db_url}")
-    print(f"Email configured: {email is not None}")
-    print(f"Password configured: {password is not None}")
-    
-    # 2. Check if credentials file exists
     if not os.path.exists(cred_path):
-        print(f"\nERROR: Credentials file not found at {cred_path}")
-        return False
+        raise FileNotFoundError(f"Credentials file not found at {cred_path}")
     
     try:
-        # 3. Initialize Firebase
-        print("\n2. Initializing Firebase...")
+        app = firebase_admin.get_app()
+    except ValueError:
         cred = credentials.Certificate(cred_path)
+        app = firebase_admin.initialize_app(cred, {
+            'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
+        })
+    
+    return app
+
+def view_data(path=None):
+    """View data from Firebase in a nicely formatted way."""
+    console = Console()
+    
+    try:
+        # Initialize Firebase if not already initialized
+        initialize_firebase()
         
-        # Check if app is already initialized
-        try:
-            firebase_admin.get_app()
-            print("Firebase app already initialized")
-        except ValueError:
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': db_url
-            })
-            print("Firebase app initialized successfully")
+        # Get reference to the specified path or root
+        ref = db.reference(path) if path else db.reference('/')
         
-        # 4. Authenticate user
-        print("\n3. Authenticating user...")
-        user = auth.get_user_by_email(email)
-        user_id = user.uid
-        print(f"User authenticated successfully (UID: {user_id})")
+        # Get the data
+        data = ref.get()
         
-        # 5. Test database connection
-        print("\n4. Testing database connection...")
-        db_ref = db.reference(f'/progress/{user_id}')
-        test_ref = db_ref.child('_connection_test')
-        timestamp = datetime.now().isoformat()
-        test_ref.set({'timestamp': timestamp})
+        if not data:
+            console.print("[yellow]No data found.[/yellow]")
+            return
         
-        # 6. Verify data was written
-        print("\n5. Verifying data...")
-        read_data = test_ref.get()
-        if read_data and read_data.get('timestamp') == timestamp:
-            print("Data written and read successfully!")
-        else:
-            print("ERROR: Data verification failed!")
-            return False
+        # Print as formatted JSON
+        console.print("\n[bold blue]Firebase Data:[/bold blue]")
+        print_json(json.dumps(data, indent=2, ensure_ascii=False))
         
-        print("\n=== All Tests Passed! ===")
-        return True
+        # If it's vocabulary data, also show as table
+        if path and 'vocabulary' in path:
+            console.print("\n[bold blue]Vocabulary Table:[/bold blue]")
+            table = Table(show_header=True)
+            table.add_column("Hiragana", style="bold")
+            table.add_column("Kanji", style="cyan")
+            table.add_column("French", style="green")
+            table.add_column("Example", style="yellow")
+            
+            for word_id, word_data in data.items():
+                table.add_row(
+                    word_data.get('hiragana', ''),
+                    word_data.get('kanji', ''),
+                    word_data.get('french', ''),
+                    word_data.get('example_sentence', '')[:50] + '...' if word_data.get('example_sentence', '') else ''
+                )
+            
+            console.print(table)
         
+        # If it's progress data, show as table
+        elif path and 'progress' in path:
+            console.print("\n[bold blue]Progress Table:[/bold blue]")
+            table = Table(show_header=True)
+            table.add_column("Word", style="bold")
+            table.add_column("Attempts", style="cyan")
+            table.add_column("Successes", style="green")
+            table.add_column("Success Rate", style="yellow")
+            table.add_column("Last Seen", style="magenta")
+            
+            for word, progress in data.items():
+                attempts = progress.get('attempts', 0)
+                successes = progress.get('successes', 0)
+                success_rate = f"{(successes/attempts*100):.1f}%" if attempts > 0 else "0%"
+                
+                table.add_row(
+                    word,
+                    str(attempts),
+                    str(successes),
+                    success_rate,
+                    progress.get('last_seen', 'Never')
+                )
+            
+            console.print(table)
+            
     except Exception as e:
-        print(f"\nERROR: {str(e)}")
-        return False
+        console.print(f"[red]Error viewing data: {str(e)}[/red]")
 
 if __name__ == "__main__":
-    test_firebase_connection() 
+    # Example usage
+    console = Console()
+    console.print("\n[bold blue]Firebase Data Viewer[/bold blue]")
+    console.print("[dim]Available paths:[/dim]")
+    console.print("1. [cyan]/[/cyan] (root)")
+    console.print("2. [cyan]/vocabulary/{user_id}[/cyan] (vocabulary data)")
+    console.print("3. [cyan]/progress/{user_id}[/cyan] (progress data)")
+    
+    path = input("\nEnter path to view (or press Enter for root): ").strip()
+    view_data(path if path else None) 
