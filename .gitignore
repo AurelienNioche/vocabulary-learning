@@ -189,3 +189,9 @@ firebase-credentials.json
 
 # Progress file (now using Firebase)
 progress.json
+
+# Ignore all files in data directory
+vocabulary_learning/data/*
+
+# But keep the directory and .gitkeep
+!vocabulary_learning/data/.gitkeep
