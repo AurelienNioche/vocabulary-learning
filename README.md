@@ -4,17 +4,27 @@ A command-line tool for learning Japanese vocabulary with spaced repetition and 
 
 ## Features
 
+### Core Features
 - Interactive command-line interface with Vim-like commands
 - Japanese text support (hiragana, katakana, kanji)
 - Spaced repetition learning system
 - Progress tracking and statistics
+- Clean and modular code structure
+
+### Cloud Integration
 - Firebase integration for cloud sync
 - Local JSON backup
-- Smart answer checking with typo tolerance
+- Automatic data synchronization
+- Secure user authentication
+
+### Learning Features
+- Smart answer validation:
+  - Handles multiple correct translations
+  - Detects and suggests corrections for accents
+  - Identifies minor typos and asks for confirmation
 - Example sentences with translations
-<<<<<<< HEAD
-- Clean and modular code structure
-=======
+- Detailed statistics for each word
+- Progress tracking with success rates
 
 ### Vim-like Commands
 - `:h` - Show help
@@ -25,22 +35,6 @@ A command-line tool for learning Japanese vocabulary with spaced repetition and 
 - `:S` - Show all statistics
 - `:e` - Show example with translation
 - `:d` - Don't know (show answer)
-
-### Git Integration
-- Automatic commits of your progress
-- Automatic push to remote repository
-- Timestamped commits for tracking learning sessions
-- Progress backup on every quit or interrupt
-
-### Learning Features
-- Smart answer validation:
-  - Handles multiple correct translations
-  - Detects and suggests corrections for accents
-  - Identifies minor typos and asks for confirmation
-- Example sentences with translations
-- Detailed statistics for each word
-- Progress tracking with success rates
->>>>>>> parent of 734c9ca (using firebase)
 
 ## Installation
 
@@ -80,13 +74,14 @@ python vocab_learner.py
 - Add multiple translations using slashes (e.g., "bonjour/salut")
 - Optional kanji and example sentences
 - Automatic suggestions for kanji and translations
+- Words are automatically assigned sequential IDs (e.g., word_000001)
 
 ## Progress Tracking
 
 Your progress is:
 - Saved automatically after each answer
-- Committed to git when you quit
-- Pushed to your remote repository
+- Synced with Firebase in real-time
+- Backed up locally in JSON format
 - Tracked with detailed statistics
 
 ## Tips
@@ -94,4 +89,4 @@ Your progress is:
 - Use `:d` when you don't know a word instead of guessing
 - Check example sentences with `:e` to learn context
 - Review your progress regularly with `:S`
-- Your progress is automatically backed up via git
+- Your progress is automatically backed up to Firebase

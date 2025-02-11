@@ -1,0 +1,56 @@
+{
+  "ありがとう": {
+    "attempts": 1,
+    "last_attempt_was_failure": false,
+    "last_seen": "2025-02-11T19:58:03.135945",
+    "review_intervals": [
+      9.444444444444445e-09
+    ],
+    "successes": 1
+  },
+  "かてい": {
+    "attempts": 1,
+    "last_attempt_was_failure": false,
+    "last_seen": "2025-02-11T20:00:24.561386",
+    "review_intervals": [
+      8.333333333333334e-09
+    ],
+    "successes": 0
+  },
+  "こんにちは": {
+    "attempts": 1,
+    "last_attempt_was_failure": false,
+    "last_seen": "2025-02-11T19:55:48.845269",
+    "review_intervals": [
+      1.0277777777777778e-08
+    ],
+    "successes": 1
+  },
+  "せいじん": {
+    "attempts": 1,
+    "last_attempt_was_failure": false,
+    "last_seen": "2025-02-11T20:01:10.066664",
+    "review_intervals": [
+      8.888888888888889e-09
+    ],
+    "successes": 0
+  },
+  "でんしレンジ": {
+    "attempts": 1,
+    "last_attempt_was_failure": false,
+    "last_seen": "2025-02-11T19:45:07.415747",
+    "review_intervals": [
+      1.0277777777777778e-08
+    ],
+    "successes": 1
+  },
+  "とくべつ": {
+    "attempts": 1,
+    "last_attempt_was_failure": false,
+    "last_seen": "2025-02-11T19:59:21.431539",
+    "review_intervals": [
+      7.5e-09
+    ],
+    "successes": 1
+  }
+}

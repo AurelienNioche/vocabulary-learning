@@ -17,12 +17,21 @@ import re
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import credentials, db
+from firebase_admin import credentials, db, auth
+import sys
+
+# Get the package root directory
+PACKAGE_ROOT = Path(__file__).parent
 
 class VocabularyLearner:
-    def __init__(self, csv_path, progress_file="progress.json"):
-        self.csv_path = csv_path
-        self.progress_file = progress_file
+    def __init__(self, vocab_file="data/vocabulary.json", progress_file="data/progress.json"):
+        self.vocab_file = str(PACKAGE_ROOT / vocab_file)
+        self.progress_file = str(PACKAGE_ROOT / progress_file)
+        
+        # Ensure data directory exists
+        data_dir = Path(self.vocab_file).parent
+        data_dir.mkdir(parents=True, exist_ok=True)
+        
         self.console = Console()
         
         # Initialize Firebase
@@ -34,22 +43,42 @@ class VocabularyLearner:
             exit(1)
             
         try:
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://vocabulary-learning-9bd6e-default-rtdb.firebaseio.com/'
-            })
-            self.db_ref = db.reference('/progress')
+            try:
+                app = firebase_admin.get_app()
+                self.console.print("[dim]Using existing Firebase connection[/dim]")
+            except ValueError:
+                cred = credentials.Certificate(cred_path)
+                app = firebase_admin.initialize_app(cred, {
+                    'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
+                })
+            
+            # Get user credentials
+            email = os.getenv('FIREBASE_USER_EMAIL')
+            if not email:
+                raise ValueError("Firebase user email not found in .env")
+            
+            # Get user ID
+            user = auth.get_user_by_email(email)
+            user_id = user.uid
+            self.console.print(f"[dim]Authenticated as: {email}[/dim]")
+            
+            # Set up database references
+            self.progress_ref = db.reference(f'/progress/{user_id}')
+            self.vocab_ref = db.reference(f'/vocabulary/{user_id}')
             self.console.print("[green]Successfully connected to Firebase![/green]")
+            
         except Exception as e:
             self.console.print(f"[red]Failed to initialize Firebase: {str(e)}[/red]")
-            # Fallback to local file if Firebase fails
-            self.db_ref = None
+            self.progress_ref = None
+            self.vocab_ref = None
             self.console.print("[yellow]Falling back to local storage...[/yellow]")
         
         self.load_vocabulary()
         self.load_progress()
+        
         # Setup signal handler for graceful exit
         signal.signal(signal.SIGINT, self.signal_handler)
+        
         # Vim-like commands
         self.vim_commands = {
             ':q': 'quit program',
@@ -60,11 +89,13 @@ class VocabularyLearner:
             ':e': 'show example',
             ':d': 'show answer (don\'t know)'
         }
+        
         self.last_save_time = datetime.now()
         # Initialize Japanese text converter
         self.kks = pykakasi.kakasi()
         # Initialize translator
         self.translator = Translator()
+        
         # Common romaji to hiragana mappings
         self.romaji_to_hiragana = {
             'a': 'あ', 'i': 'い', 'u': 'う', 'e': 'え', 'o': 'お',
@@ -107,23 +138,63 @@ class VocabularyLearner:
         exit(0)
 
     def load_vocabulary(self):
-        """Load vocabulary from CSV file."""
-        if not os.path.exists(self.csv_path):
-            self.vocabulary = pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence'])
-            self.vocabulary.to_csv(self.csv_path, index=False)
-        else:
-            self.vocabulary = pd.read_csv(self.csv_path)
+        """Load vocabulary from JSON file."""
+        try:
+            with open(self.vocab_file, 'r', encoding='utf-8') as f:
+                vocab_data = json.load(f)
+            
+            if not vocab_data:
+                self.vocabulary = pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence'])
+                self.console.print("[yellow]No vocabulary data found[/yellow]")
+                return
+            
+            # Convert JSON data to DataFrame
+            vocab_list = []
+            for word_id, word_data in vocab_data.items():
+                vocab_list.append({
+                    'japanese': word_data['hiragana'],
+                    'kanji': word_data['kanji'],
+                    'french': word_data['french'],
+                    'example_sentence': word_data['example_sentence']
+                })
+            
+            self.vocabulary = pd.DataFrame(vocab_list)
             # Clean whitespace from entries
             self.vocabulary = self.vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
             # Remove any empty rows
-            self.vocabulary = self.vocabulary.dropna(subset=['japanese', 'french'])  # Allow empty kanji and example_sentence
+            self.vocabulary = self.vocabulary.dropna(subset=['japanese', 'french'])
+            self.console.print(f"[green]✓ Loaded {len(self.vocabulary)} words[/green]")
+            
+            # Show last progress update time if progress file exists
+            if os.path.exists(self.progress_file):
+                last_modified = datetime.fromtimestamp(os.path.getmtime(self.progress_file))
+                time_diff = datetime.now() - last_modified
+                if time_diff.days > 0:
+                    time_str = f"{time_diff.days} days ago"
+                elif time_diff.seconds >= 3600:
+                    hours = time_diff.seconds // 3600
+                    time_str = f"{hours} hours ago"
+                else:
+                    minutes = time_diff.seconds // 60
+                    time_str = f"{minutes} minutes ago"
+                self.console.print(f"[dim]Last progress update: {time_str}[/dim]")
+            
+        except FileNotFoundError:
+            self.console.print("[yellow]No vocabulary file found[/yellow]")
+            self.vocabulary = pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence'])
+        except json.JSONDecodeError:
+            self.console.print("[red]Error: Invalid JSON format in vocabulary file[/red]")
+            self.vocabulary = pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence'])
+        except Exception as e:
+            self.console.print(f"[red]Error loading vocabulary: {str(e)}[/red]")
+            self.vocabulary = pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence'])
 
     def load_progress(self):
         """Load learning progress from Firebase or local JSON file."""
-        if self.db_ref is not None:
+        if self.progress_ref is not None:
             try:
                 # Try to load from Firebase
-                self.progress = self.db_ref.get() or {}
+                self.progress = self.progress_ref.get() or {}
                 return
             except Exception as e:
                 self.console.print(f"[yellow]Failed to load from Firebase: {str(e)}[/yellow]")
@@ -149,9 +220,9 @@ class VocabularyLearner:
             json.dump(self.progress, f, ensure_ascii=False, indent=2)
         
         # Try to save to Firebase
-        if self.db_ref is not None:
+        if self.progress_ref is not None:
             try:
-                self.db_ref.set(self.progress)
+                self.progress_ref.set(self.progress)
             except Exception as e:
                 self.console.print(f"[yellow]Failed to save to Firebase: {str(e)}[/yellow]")
                 self.console.print("[yellow]Progress saved to local file only.[/yellow]")
@@ -291,7 +362,13 @@ class VocabularyLearner:
         if len(self.vocabulary) == 0:
             return None
 
-        # Calculate priorities for all words
+        # First, look for words that haven't been practiced yet
+        new_words = self.vocabulary[~self.vocabulary['japanese'].isin(self.progress.keys())]
+        if not new_words.empty:
+            # Return the first new word (maintaining order)
+            return new_words.iloc[0]
+
+        # If all words have been practiced at least once, use the priority system
         word_priorities = []
         for _, row in self.vocabulary.iterrows():
             japanese_word = row['japanese']
@@ -456,109 +533,88 @@ class VocabularyLearner:
             return None
 
     def add_vocabulary(self):
-        """Interactive interface to add new vocabulary entries."""
-        self.console.clear()
-        self.console.print("[bold blue]Add New Vocabulary[/bold blue]")
-        self.console.print("(Press Ctrl+C or type ':q' to return to menu)")
-        self.console.print("[yellow]You can enter Japanese text in any form:[/yellow]")
-        self.console.print("- Hiragana (おう)")
-        self.console.print("- Kanji (王)")
-        self.console.print("- Romaji (ou)")
-        self.console.print("- Mixed (おう[王])\n")
+        """Add new vocabulary interactively."""
+        print("\nAdd New Vocabulary")
+        print("Enter 'q' to return to menu")
         
-        try:
-            while True:
-                # Get Japanese word
-                japanese = Prompt.ask("\nEnter the Japanese word")
-                if japanese.lower() == ':q':
-                    break
-                
-                # Handle mixed input format (e.g., "おう[王]")
-                kanji_match = re.search(r'\[(.*?)\]', japanese)
-                if kanji_match:
-                    kanji_input = kanji_match.group(1)
-                    japanese = japanese.split('[')[0].strip()
+        while True:
+            # Get Japanese word
+            japanese = input("\nEnter Japanese word (hiragana): ").strip()
+            if japanese.lower() == 'q':
+                break
+            
+            # Get kanji (optional)
+            kanji = input("Enter kanji (optional): ").strip()
+            if kanji.lower() == 'q':
+                break
+            
+            # Get French translation
+            french = input("Enter French translation: ").strip()
+            if french.lower() == 'q':
+                break
+            
+            # Get example sentence (optional)
+            example = input("Enter example sentence (optional): ").strip()
+            if example.lower() == 'q':
+                break
+            
+            # Validate input
+            if not japanese or not french:
+                self.console.print("[red]Japanese word and French translation are required![/red]")
+                continue
+            
+            # Check for duplicates
+            if any(self.vocabulary['japanese'].str.lower() == japanese.lower()):
+                self.console.print("[red]This word already exists![/red]")
+                continue
+            
+            try:
+                # Get the next word ID
+                next_id = 1
+                if os.path.exists(self.vocab_file):
+                    with open(self.vocab_file, 'r', encoding='utf-8') as f:
+                        vocab_data = json.load(f)
+                        if vocab_data:
+                            next_id = max(int(word_id.split('_')[1]) for word_id in vocab_data.keys()) + 1
                 else:
-                    kanji_input = None
+                    vocab_data = {}
                 
-                # Convert input to different writing systems
-                conversions = self.convert_japanese_text(japanese)
+                # Create new word entry
+                new_word = {
+                    f"word_{str(next_id).zfill(6)}": {
+                        "hiragana": japanese,
+                        "kanji": kanji if kanji else "",
+                        "french": french,
+                        "example_sentence": example if example else ""
+                    }
+                }
                 
-                # If kanji was provided in brackets, add it to conversions
-                if kanji_input:
-                    conversions['kanji'] = kanji_input
+                # Update vocabulary data
+                vocab_data.update(new_word)
                 
-                # Show all forms
-                table = Table(title="Japanese Forms")
-                table.add_column("Writing System", style="bold")
-                table.add_column("Text", style="green")
-                for system, text in conversions.items():
-                    table.add_row(system.capitalize(), text)
-                self.console.print(table)
+                # Save to JSON file
+                with open(self.vocab_file, 'w', encoding='utf-8') as f:
+                    json.dump(vocab_data, f, ensure_ascii=False, indent=2)
                 
-                # Let user choose the main form to store
-                self.console.print("\nWhich form would you like to store as the main Japanese text?")
-                writing_system = Prompt.ask("Choose writing system", 
-                                         choices=["hiragana", "katakana", "romaji", "kanji"],
-                                         default="hiragana")
+                # Update DataFrame
+                self.load_vocabulary()
                 
-                japanese_main = conversions[writing_system]
-                
-                # Check if word already exists
-                if not self.vocabulary[self.vocabulary['japanese'] == japanese_main].empty:
-                    self.console.print("[red]This word already exists in the vocabulary![/red]")
-                    continue
-                
-                # Get kanji (optional)
-                if writing_system != "kanji":
-                    kanji_default = conversions.get('kanji', '')
-                    if kanji_default == japanese_main:
-                        kanji_default = ''
-                    
-                    kanji = Prompt.ask(
-                        "Enter the kanji (optional, press Enter to skip)",
-                        default=kanji_default if kanji_default else None
-                    )
-                    if kanji.lower() == ':q':
-                        break
-                    if kanji.strip() == '':
-                        kanji = None
+                # Sync to Firebase if available
+                if self.vocab_ref is not None:
+                    try:
+                        self.vocab_ref.set(vocab_data)
+                        self.console.print("[green]✓ Word added and synced to Firebase![/green]")
+                    except Exception as e:
+                        self.console.print(f"[yellow]Word added locally but failed to sync to Firebase: {str(e)}[/yellow]")
                 else:
-                    kanji = japanese  # Original input was kanji
+                    self.console.print("[green]✓ Word added successfully![/green]")
                 
-                # Get French translation with suggestion
-                suggested_translation = self.suggest_translation(japanese)
-                if suggested_translation:
-                    self.console.print(f"\nSuggested translation: [cyan]{suggested_translation}[/cyan]")
-                
-                french = Prompt.ask("Enter the French translation (or press Enter to use suggestion)",
-                                  default=suggested_translation or "")
-                if french.lower() == ':q':
-                    break
-                
-                # Confirm entry
-                self.console.print("\nNew vocabulary entry:")
-                kanji_display = f" [cyan][{kanji}][/cyan]" if kanji else ""
-                self.console.print(f"[green]{japanese_main}{kanji_display}[/green] → [yellow]{french}[/yellow]")
-                
-                if Confirm.ask("\nAdd this entry?"):
-                    # Add to DataFrame
-                    new_entry = pd.DataFrame({
-                        'japanese': [japanese_main],
-                        'kanji': [kanji],
-                        'french': [french]
-                    })
-                    self.vocabulary = pd.concat([self.vocabulary, new_entry], ignore_index=True)
-                    
-                    # Save to CSV
-                    self.vocabulary.to_csv(self.csv_path, index=False)
-                    self.console.print("[green]Entry added successfully![/green]")
-                
-                if not Confirm.ask("\nAdd another word?"):
-                    break
-                
-        except KeyboardInterrupt:
-            self.console.print("\n[yellow]Returning to menu...[/yellow]")
+            except Exception as e:
+                self.console.print(f"[red]Error adding word: {str(e)}[/red]")
+                continue
+            
+            if not Confirm.ask("Add another word?"):
+                break
 
     def normalize_french(self, text):
         """Remove accents and normalize French text."""
@@ -669,269 +725,176 @@ class VocabularyLearner:
         self.console.print(table)
 
     def practice(self):
-        """Main practice loop."""
-        try:
-            while True:
-                self.console.clear()
-                self.console.print("\n[bold blue]Options:[/bold blue]")
-                self.console.print("[purple]1.[/purple] Practice vocabulary")
-                self.console.print("[purple]2.[/purple] Show progress")
-                self.console.print("[purple]3.[/purple] Add vocabulary")
-                self.console.print("[purple]4.[/purple] Quit")
-                self.console.print("\n[dim]Available commands:[/dim]")
-                self.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know")
+        """Practice mode for vocabulary learning."""
+        if len(self.vocabulary) == 0:
+            self.console.print("[yellow]No vocabulary words available. Please add some words to the vocabulary.[/yellow]")
+            return
+        
+        self.console.print("\n[bold]Practice Mode[/bold]\n")
+        self.console.print("[dim]Available commands:[/dim]")
+        self.console.print("[blue]:h[/blue] help • [blue]:m[/blue] menu • [blue]:q[/blue] quit • [blue]:s[/blue] show progress • [blue]:d[/blue] don't know")
+        
+        while True:
+            # Select a word to practice
+            word_pair = self.select_word()
+            if word_pair is None:
+                self.console.print("[yellow]No vocabulary words available.[/yellow]")
+                break
+            
+            # Display the word
+            japanese = word_pair['japanese']
+            kanji = word_pair['kanji'] if pd.notna(word_pair['kanji']) else None
+            french = word_pair['french']
+            example = word_pair['example_sentence'] if pd.notna(word_pair['example_sentence']) else None
+            
+            # Track if this is the first attempt for progress tracking
+            first_attempt = True
+            got_it_right = False
+            
+            while not got_it_right:
+                # Show the Japanese word (with kanji if available)
+                if kanji:
+                    self.console.print(f"\n[bold cyan][Q][/bold cyan] {japanese} [[bold magenta]{kanji}[/bold magenta]]")
+                else:
+                    self.console.print(f"\n[bold cyan][Q][/bold cyan] {japanese}")
                 
+                # Get user's answer
                 while True:
-                    choice = Prompt.ask("\nChoose an option [[purple]1[/purple]/[purple]2[/purple]/[purple]3[/purple]/[purple]4[/purple]]")
+                    answer = input("Your answer: ").strip()
                     
-                    if choice.startswith(':'):
-                        if choice == ':h':
-                            self.show_help()
-                            if not Confirm.ask("\nReturn to menu?"):
-                                return
-                            break
-                        elif choice == ':q':
+                    # Handle commands
+                    if answer.startswith(':'):
+                        if answer == ':q':
+                            self.console.print("\n[yellow]Saving progress...[/yellow]")
                             self.save_progress()
                             return
-                        elif choice == ':s' or choice == ':S':
-                            self.show_progress()
-                            if not Confirm.ask("\nReturn to menu?"):
-                                return
+                        elif answer == ':m':
+                            return
+                        elif answer == ':h':
+                            self.show_help()
+                            continue
+                        elif answer == ':s':
+                            self.show_word_statistics(word_pair)
+                            continue
+                        elif answer == ':e' and example:
+                            self.console.print(f"\n[bold]Example:[/bold] {example}")
+                            continue
+                        elif answer == ':d':
+                            print("\033[A", end="")  # Move cursor up one line
+                            print("\033[2K", end="")  # Clear the line
+                            self.console.print(f"Your answer: :d    [bold red]✗ Don't know[/bold red]")
+                            self.console.print(f"The correct answer is: [green]{french}[/green]")
+                            if first_attempt:
+                                self.update_progress(japanese, False)
+                            got_it_right = True  # Move to next word after showing answer
                             break
                         else:
-                            self.console.print("[red]Unknown command. Type :h for help.[/red]")
-                        continue
+                            self.console.print("[red]Invalid command. Type :h for help.[/red]")
+                            continue
                     
-                    if choice not in ["1", "2", "3", "4"]:
-                        self.console.print("[red]Please select one of the options (1-4) or use a valid Vim command[/red]")
-                        continue
-                        
-                    if choice == "4":
-                        self.save_progress()
-                        return
-                    elif choice == "2":
-                        self.show_progress()
-                        if not Confirm.ask("\nReturn to menu?"):
-                            return
+                    # Check the answer
+                    is_correct, message = self.check_answer(answer, french)
+                    if is_correct:
+                        print("\033[A", end="")  # Move cursor up one line
+                        print("\033[2K", end="")  # Clear the line
+                        self.console.print(f"Your answer: {answer}    [bold green]✓ Correct![/bold green]")
+                        if message:
+                            self.console.print(message)
+                        if first_attempt:
+                            self.update_progress(japanese, True)
+                        got_it_right = True
                         break
-                    elif choice == "3":
-                        self.add_vocabulary()
+                    else:
+                        print("\033[A", end="")  # Move cursor up one line
+                        print("\033[2K", end="")  # Clear the line
+                        self.console.print(f"Your answer: {answer}    [bold red]✗ Incorrect[/bold red]")
+                        self.console.print(f"The correct answer is: [green]{french}[/green]")
+                        if message:
+                            self.console.print(message)
+                        if first_attempt:
+                            self.update_progress(japanese, False)
+                        first_attempt = False
+                        self.console.print("\n[yellow]Let's try again![/yellow]")
                         break
-                    elif choice == "1":
-                        break  # Continue to practice mode
-                
-                # Practice mode
-                if choice == "1":
-                    self.console.clear()
-                    # Reload vocabulary before starting practice
-                    self.load_vocabulary()
-                    self.console.print(f"[green]Loaded {len(self.vocabulary)} words from vocabulary file[/green]")
-                    
-                    self.console.print("[bold blue]Practice Mode[/bold blue]\n")
-                    
-                    while True:  # Inner practice loop
-                        word_pair = self.select_word()
-                        if word_pair is None:
-                            self.console.print("[yellow]No vocabulary words available. Please add some words to the CSV file.[/yellow]")
-                            break
+            
+            # Auto-save progress periodically
+            if (datetime.now() - self.last_save_time).seconds > 300:  # 5 minutes
+                self.save_progress()
+                self.last_save_time = datetime.now()
+            
+            self.console.print()  # Just add a newline for spacing
 
-                        # Initialize progress for new words
-                        if word_pair['japanese'] not in self.progress:
-                            self.progress[word_pair['japanese']] = {
-                                'attempts': 0,
-                                'successes': 0,
-                                'last_seen': datetime.now().isoformat(),
-                                'review_intervals': [],
-                                'last_attempt_was_failure': False
-                            }
-
-                        got_correct = False
-                        while not got_correct:  # Keep asking until correct
-                            self.console.print("\n[bold blue]Translate to French:[/bold blue]")
-                            # Display Japanese with kanji if available
-                            kanji_display = f" [cyan][{word_pair['kanji']}][/cyan]" if pd.notna(word_pair['kanji']) else ""
-                            self.console.print(f"[bold green]{word_pair['japanese']}{kanji_display}[/bold green]\n")
-
-                            self.console.print("[dim]Available commands:[/dim]")
-                            self.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know\n")
-
-                            answer = Prompt.ask("Your answer")
-                            
-                            # Handle Vim-like commands
-                            if answer.startswith(':'):
-                                if answer == ':q':
-                                    self.save_progress()
-                                    return
-                                elif answer == ':m':
-                                    got_correct = True
-                                    break
-                                elif answer == ':h':
-                                    self.show_help()
-                                    continue
-                                elif answer == ':s':
-                                    self.show_word_statistics(word_pair)
-                                    continue
-                                elif answer == ':S':
-                                    self.show_progress()
-                                    continue
-                                elif answer == ':e':
-                                    if pd.notna(word_pair['example_sentence']) and word_pair['example_sentence'].strip():
-                                        example = word_pair['example_sentence']
-                                        # Get translation of example
-                                        try:
-                                            translation = self.translator.translate(example, src='ja', dest='fr')
-                                            self.console.print(f"\n[italic yellow]Example:[/italic yellow]")
-                                            self.console.print(f"[cyan]{example}[/cyan]")
-                                            self.console.print(f"[green]{translation.text}[/green]")
-                                        except Exception as e:
-                                            self.console.print(f"\n[italic yellow]Example: {example}[/italic yellow]")
-                                            self.console.print("[red]Translation unavailable[/red]")
-                                    else:
-                                        self.console.print("\n[yellow]No example available for this word[/yellow]")
-                                    continue
-                                elif answer == ':d':
-                                    self.console.print(f"[yellow]The answer is: [green]{word_pair['french']}[/green][/yellow]")
-                                    self.update_progress(word_pair['japanese'], False)
-                                    self.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
-                                    self.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
-                                    input()
-                                    continue
-                                else:
-                                    self.console.print("[red]Unknown command. Type :h for help.[/red]")
-                                continue
-
-                            correct, note = self.check_answer(answer, word_pair['french'])
-                            if correct:
-                                self.console.print("[bold green]Correct! ✓[/bold green]")
-                                if note:
-                                    self.console.print(note)
-                                # Only update progress if it was the first try
-                                if not self.progress[word_pair['japanese']]['last_attempt_was_failure']:
-                                    self.update_progress(word_pair['japanese'], True)
-                                got_correct = True
-                                break
-                            else:
-                                self.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
-                                self.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
-                                input()
-                                self.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
-                                self.update_progress(word_pair['japanese'], False)
-
-        except KeyboardInterrupt:
-            self.console.print("\n\n[yellow]Saving progress...[/yellow]")
+    def reset_progress(self):
+        """Reset all learning progress."""
+        if Confirm.ask("[red]Are you sure you want to reset all progress?[/red] This cannot be undone"):
+            # Backup current progress
+            if os.path.exists(self.progress_file):
+                backup_file = f"{self.progress_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                try:
+                    with open(self.progress_file, 'r', encoding='utf-8') as src, \
+                         open(backup_file, 'w', encoding='utf-8') as dst:
+                        dst.write(src.read())
+                    self.console.print(f"[dim]Progress backed up to: {backup_file}[/dim]")
+                except Exception as e:
+                    self.console.print(f"[yellow]Warning: Could not create backup: {str(e)}[/yellow]")
+            
+            # Reset progress
+            self.progress = {}
             self.save_progress()
-            exit(0)
+            
+            # Reset Firebase if available
+            firebase_status = ""
+            if self.progress_ref is not None:
+                try:
+                    self.progress_ref.set({})
+                    firebase_status = " and Firebase"
+                except Exception as e:
+                    firebase_status = f" (Firebase reset failed: {str(e)})"
+            
+            self.console.print(f"[green]Progress reset successfully{firebase_status}![/green]")
+        else:
+            self.console.print("[dim]Progress reset cancelled[/dim]")
 
 def main():
     console = Console()
-    csv_path = "vocabulary.csv"
-
-    if not os.path.exists(csv_path):
-        console.print("[yellow]Creating new vocabulary file...[/yellow]")
-        pd.DataFrame(columns=['japanese', 'kanji', 'french', 'example_sentence']).to_csv(csv_path, index=False)
-
-    learner = VocabularyLearner(csv_path)
-    console.print("[bold blue]Welcome to the Vocabulary Learner![/bold blue]")
+    console.print("\n[bold blue]=== Japanese Vocabulary Learning Tool ===[/bold blue]")
     
-    # Skip menu and go directly to practice mode
-    learner.console.clear()
-    # Reload vocabulary before starting practice
-    learner.load_vocabulary()
-    learner.console.print(f"[green]Loaded {len(learner.vocabulary)} words from vocabulary file[/green]")
+    learner = VocabularyLearner()
     
-    learner.console.print("[bold blue]Practice Mode[/bold blue]\n")
-    learner.console.print("[dim]Available commands:[/dim]")
-    learner.console.print("[cyan]:h[/cyan] help • [cyan]:m[/cyan] menu • [cyan]:q[/cyan] quit • [cyan]:s[/cyan] show progress • [cyan]:d[/cyan] don't know")
+    # Start with practice mode
+    learner.practice()
     
-    try:
-        while True:  # Practice loop
-            word_pair = learner.select_word()
-            if word_pair is None:
-                learner.console.print("[yellow]No vocabulary words available. Please add some words to the CSV file.[/yellow]")
+    while True:
+        console.print("\n[bold]Main Menu[/bold]")
+        console.print("[purple]1.[/purple] Practice vocabulary")
+        console.print("[purple]2.[/purple] Show progress")
+        console.print("[purple]3.[/purple] Add vocabulary")
+        console.print("[purple]4.[/purple] Reset progress")
+        console.print("[blue]:q[/blue] Quit")
+        
+        choice = input("\nChoose an option: ").strip()
+        
+        if choice == '1':
+            learner.practice()
+        elif choice == '2':
+            learner.show_progress()
+            if not Confirm.ask("\nReturn to menu?"):
                 break
-
-            # Initialize progress for new words
-            if word_pair['japanese'] not in learner.progress:
-                learner.progress[word_pair['japanese']] = {
-                    'attempts': 0,
-                    'successes': 0,
-                    'last_seen': datetime.now().isoformat(),
-                    'review_intervals': [],
-                    'last_attempt_was_failure': False
-                }
-
-            got_correct = False
-            while not got_correct:  # Keep asking until correct
-                learner.console.print("\n[bold blue]Translate to French:[/bold blue]")
-                # Display Japanese with kanji if available
-                kanji_display = f" [cyan][{word_pair['kanji']}][/cyan]" if pd.notna(word_pair['kanji']) else ""
-                learner.console.print(f"[bold green]{word_pair['japanese']}{kanji_display}[/bold green]\n")
-
-                answer = Prompt.ask("Your answer")
-                
-                # Handle Vim-like commands
-                if answer.startswith(':'):
-                    if answer == ':q':
-                        learner.save_progress()
-                        return
-                    elif answer == ':m':
-                        learner.practice()  # Go to full menu mode
-                        return
-                    elif answer == ':h':
-                        learner.show_help()
-                        continue
-                    elif answer == ':s':
-                        learner.show_word_statistics(word_pair)
-                        continue
-                    elif answer == ':S':
-                        learner.show_progress()
-                        continue
-                    elif answer == ':e':
-                        if pd.notna(word_pair['example_sentence']) and word_pair['example_sentence'].strip():
-                            example = word_pair['example_sentence']
-                            try:
-                                translation = learner.translator.translate(example, src='ja', dest='fr')
-                                learner.console.print(f"\n[italic yellow]Example:[/italic yellow]")
-                                learner.console.print(f"[cyan]{example}[/cyan]")
-                                learner.console.print(f"[green]{translation.text}[/green]")
-                            except Exception as e:
-                                learner.console.print(f"\n[italic yellow]Example: {example}[/italic yellow]")
-                                learner.console.print("[red]Translation unavailable[/red]")
-                        else:
-                            learner.console.print("\n[yellow]No example available for this word[/yellow]")
-                        continue
-                    elif answer == ':d':
-                        learner.console.print(f"[yellow]The answer is: [green]{word_pair['french']}[/green][/yellow]")
-                        learner.update_progress(word_pair['japanese'], False)
-                        learner.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
-                        learner.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
-                        input()
-                        continue
-                    else:
-                        learner.console.print("[red]Unknown command. Type :h for help.[/red]")
-                    continue
-
-                correct, note = learner.check_answer(answer, word_pair['french'])
-                if correct:
-                    learner.console.print("[bold green]Correct! ✓[/bold green]")
-                    if note:
-                        learner.console.print(note)
-                    # Only update progress if it was the first try
-                    if not learner.progress[word_pair['japanese']]['last_attempt_was_failure']:
-                        learner.update_progress(word_pair['japanese'], True)
-                    got_correct = True
-                    break
-                else:
-                    learner.console.print(f"[bold red]Incorrect! ✗[/bold red] The correct answer was: [bold green]{word_pair['french']}[/bold green]")
-                    learner.console.print("\n[yellow]Press Enter when ready to try again...[/yellow]")
-                    input()
-                    learner.progress[word_pair['japanese']]['last_attempt_was_failure'] = True
-                    learner.update_progress(word_pair['japanese'], False)
-
-    except KeyboardInterrupt:
-        learner.console.print("\n\n[yellow]Saving progress...[/yellow]")
-        learner.save_progress()
-        exit(0)
+        elif choice == '3':
+            learner.add_vocabulary()
+        elif choice == '4':
+            learner.reset_progress()
+        elif choice == ':q':
+            console.print("\n[yellow]Saving progress...[/yellow]")
+            learner.save_progress()
+            console.print("[green]Goodbye![/green]")
+            break
+        else:
+            console.print("[red]Invalid option. Please try again.[/red]")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\nExiting gracefully...")
+        sys.exit(0)
