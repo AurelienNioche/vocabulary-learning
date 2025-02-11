@@ -18,8 +18,11 @@ dependencies = [
     "requests==2.32.3",
 ]
 
+[project.scripts]
+vocabulary-learning = "vocab_learner.__main__:main"
+
 [tool.hatch.build.targets.wheel]
-packages = ["vocab_learner.py"] 
+packages = ["vocab_learner"]
 
 [tool.uv]
 install = [

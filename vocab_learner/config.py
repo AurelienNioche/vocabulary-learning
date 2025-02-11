@@ -1,26 +1,32 @@
-from pathlib import Path
-from typing import Dict
 import os
+from dataclasses import dataclass
+from pathlib import Path
 from dotenv import load_dotenv
 
+@dataclass
 class Config:
-    """Configuration management for the vocabulary learner."""
+    vocab_file: str
+    progress_file: str
+    firebase_credentials: dict | None = None
     
-    def __init__(self) -> None:
+    @classmethod
+    def load(cls):
         load_dotenv()
-        self.base_dir = Path(__file__).parent.parent
-        self.data_dir = self.base_dir / "data"
-        self.data_dir.mkdir(exist_ok=True)
         
-        self.vocab_file = self.data_dir / "vocabulary.json"
-        self.progress_file = self.data_dir / "progress.json"
+        # Set default paths
+        data_dir = Path.home() / ".vocab-learner"
+        data_dir.mkdir(exist_ok=True)
         
-        self.firebase_config = self._load_firebase_config()
+        vocab_file = data_dir / "vocabulary.json"
+        progress_file = data_dir / "progress.json"
         
-    def _load_firebase_config(self) -> Dict[str, str]:
-        return {
-            'credentials_path': os.getenv('FIREBASE_CREDENTIALS_PATH', ''),
-            'database_url': os.getenv('FIREBASE_DATABASE_URL', ''),
-            'user_email': os.getenv('FIREBASE_USER_EMAIL', ''),
-            'user_password': os.getenv('FIREBASE_USER_PASSWORD', '')
-        }
+        # Load Firebase credentials if available
+        firebase_creds = None
+        if os.getenv("FIREBASE_CREDENTIALS"):
+            firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
+            
+        return cls(
+            vocab_file=str(vocab_file),
+            progress_file=str(progress_file),
+            firebase_credentials=firebase_creds
+        )
