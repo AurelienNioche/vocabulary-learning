@@ -732,7 +732,7 @@ class VocabularyLearner:
         
         self.console.print("\n[bold]Practice Mode[/bold]\n")
         self.console.print("[dim]Available commands:[/dim]")
-        self.console.print("[blue]:h[/blue] help • [blue]:m[/blue] menu • [blue]:q[/blue] quit • [blue]:s[/blue] show progress • [blue]:d[/blue] don't know")
+        self.console.print("[blue]:h[/blue] help • [blue]:m[/blue] menu • [blue]:q[/blue] quit • [blue]:s[/blue] show progress • [blue]:d[/blue] don't know • [blue]:e[/blue] show example")
         
         while True:
             # Select a word to practice
@@ -767,7 +767,7 @@ class VocabularyLearner:
                         if answer == ':q':
                             self.console.print("\n[yellow]Saving progress...[/yellow]")
                             self.save_progress()
-                            return
+                            sys.exit(0)
                         elif answer == ':m':
                             return
                         elif answer == ':h':
@@ -777,7 +777,10 @@ class VocabularyLearner:
                             self.show_word_statistics(word_pair)
                             continue
                         elif answer == ':e' and example:
-                            self.console.print(f"\n[bold]Example:[/bold] {example}")
+                            # Convert example to hiragana
+                            result = self.kks.convert(example)
+                            hiragana = ''.join([item['hira'] for item in result])
+                            self.console.print(f"\n[bold]Example:[/bold] {hiragana} / {example}")
                             continue
                         elif answer == ':d':
                             print("\033[A", end="")  # Move cursor up one line
