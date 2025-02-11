@@ -11,6 +11,10 @@ class VocabularyManager:
         self.vocabulary = None
         self.console = Console()
         self.load_vocabulary()
+        
+        # Share vocabulary with progress manager
+        if hasattr(self, 'progress_manager'):
+            self.progress_manager.vocabulary = self.vocabulary
 
     def load_vocabulary(self) -> None:
         if self.firebase_ref:

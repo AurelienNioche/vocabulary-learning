@@ -36,9 +36,23 @@ class ProgressManager:
 
     def calculate_priority(self, word: str, word_data: Dict[str, Any]) -> float:
         """Calculate priority score for a word."""
+        # For words not in progress (new words)
         if word_data is None:
-            return 1.0 if self.count_active_words() < 8 else 0.0
+            # Only introduce if we have less than 8 active words
+            if self.count_active_words() >= 8:
+                return 0.0
+                
+            # Find the lowest word index that hasn't been started
+            all_words = set(self.vocabulary.index)  # assuming vocabulary DataFrame is accessible
+            started_words = set(self.progress.keys())
+            new_words = sorted(all_words - started_words)
+            
+            # If this is the next word in sequence, give it high priority
+            if new_words and word == new_words[0]:
+                return 0.9 + random.random() * 0.1
+            return 0.0  # Skip other new words for now
 
+        # For words already in progress
         successes = word_data.get('successes', 0)
         attempts = word_data.get('attempts', 0)
         success_rate = (successes / max(attempts, 1)) * 100
