@@ -1,0 +1,824 @@
+{
+  "word_000001": {
+    "hiragana": "こんにちは",
+    "kanji": "今日は",
+    "french": "bonjour",
+    "example_sentence": "こんにちは、元気ですか"
+  },
+  "word_000002": {
+    "hiragana": "ありがとう",
+    "kanji": "有難う",
+    "french": "merci",
+    "example_sentence": "ありがとうございます"
+  },
+  "word_000003": {
+    "hiragana": "とくべつ",
+    "kanji": "特別",
+    "french": "spécial",
+    "example_sentence": "クリスマスはとくべつな日です"
+  },
+  "word_000004": {
+    "hiragana": "かてい",
+    "kanji": "家庭",
+    "french": "famille/foyer",
+    "example_sentence": "幸せな家庭を持ちたいです"
+  },
+  "word_000005": {
+    "hiragana": "せいじん",
+    "kanji": "成人",
+    "french": "adulte",
+    "example_sentence": "成人になりました"
+  },
+  "word_000006": {
+    "hiragana": "しゅうきょう",
+    "kanji": "宗教",
+    "french": "religion",
+    "example_sentence": "いろいろな宗教があります"
+  },
+  "word_000007": {
+    "hiragana": "しけんをうける",
+    "kanji": "",
+    "french": "passer un examen",
+    "example_sentence": "来週試験を受けます"
+  },
+  "word_000008": {
+    "hiragana": "かざり",
+    "kanji": "飾り",
+    "french": "décoration",
+    "example_sentence": "お正月の飾りを準備します"
+  },
+  "word_000009": {
+    "hiragana": "おちる",
+    "kanji": "落ちる",
+    "french": "tomber/rater un examen",
+    "example_sentence": "試験に落ちないように頑張ります"
+  },
+  "word_000010": {
+    "hiragana": "つながる",
+    "kanji": "繋がる",
+    "french": "être lié/connecter",
+    "example_sentence": "SNSでつながりましょう"
+  },
+  "word_000011": {
+    "hiragana": "としこしそば",
+    "kanji": "年越し蕎麦",
+    "french": "soba du nouvel an",
+    "example_sentence": "大晦日に年越しそばを食べます"
+  },
+  "word_000012": {
+    "hiragana": "ほし",
+    "kanji": "星",
+    "french": "étoile",
+    "example_sentence": "夜空に星がきれいです"
+  },
+  "word_000013": {
+    "hiragana": "ぼんおどり",
+    "kanji": "盆踊り",
+    "french": "danse traditionnelle d'été",
+    "example_sentence": "夏祭りで盆踊りを踊ります"
+  },
+  "word_000014": {
+    "hiragana": "らく",
+    "kanji": "楽",
+    "french": "facile/aisé",
+    "example_sentence": "この仕事はらくです"
+  },
+  "word_000015": {
+    "hiragana": "あつまる",
+    "kanji": "集まる",
+    "french": "se rassembler/se réunir",
+    "example_sentence": "友達が家に集まります"
+  },
+  "word_000016": {
+    "hiragana": "おやつ",
+    "kanji": "お八つ",
+    "french": "goûter",
+    "example_sentence": "おやつにケーキを食べます"
+  },
+  "word_000017": {
+    "hiragana": "わたる",
+    "kanji": "渡る",
+    "french": "traverser",
+    "example_sentence": "道路を渡ります"
+  },
+  "word_000018": {
+    "hiragana": "ひろば",
+    "kanji": "広場",
+    "french": "place",
+    "example_sentence": "広場で子供たちが遊んでいます"
+  },
+  "word_000019": {
+    "hiragana": "めずらしい",
+    "kanji": "珍しい",
+    "french": "rare/peu commun",
+    "example_sentence": "珍しい果物を見つけました"
+  },
+  "word_000020": {
+    "hiragana": "どうぐ",
+    "kanji": "道具",
+    "french": "équipement",
+    "example_sentence": "必要な道具を準備します"
+  },
+  "word_000021": {
+    "hiragana": "よやく",
+    "kanji": "予約",
+    "french": "réservation",
+    "example_sentence": "レストランを予約します"
+  },
+  "word_000022": {
+    "hiragana": "こうかん",
+    "kanji": "交換",
+    "french": "échanger",
+    "example_sentence": "プレゼントを交換します"
+  },
+  "word_000023": {
+    "hiragana": "きゅうでん",
+    "kanji": "宮殿",
+    "french": "château/palais",
+    "example_sentence": "宮殿を見学しました"
+  },
+  "word_000024": {
+    "hiragana": "はくしごう",
+    "kanji": "博士号",
+    "french": "doctorat",
+    "example_sentence": "博士号を取得しました"
+  },
+  "word_000025": {
+    "hiragana": "つまらない",
+    "kanji": "詰まらない",
+    "french": "ennuyeux/sans intérêt",
+    "example_sentence": "この本はつまらないです"
+  },
+  "word_000026": {
+    "hiragana": "そうじ",
+    "kanji": "掃除",
+    "french": "ménage",
+    "example_sentence": "部屋の掃除をします"
+  },
+  "word_000027": {
+    "hiragana": "そうじき",
+    "kanji": "掃除機",
+    "french": "aspirateur",
+    "example_sentence": "掃除機で床を掃除します"
+  },
+  "word_000028": {
+    "hiragana": "こわれる",
+    "kanji": "壊れる",
+    "french": "se casser/se briser",
+    "example_sentence": "パソコンが壊れました"
+  },
+  "word_000029": {
+    "hiragana": "かいかえる",
+    "kanji": "買い換える",
+    "french": "remplacer/changer",
+    "example_sentence": "新しいパソコンを買い換えました"
+  },
+  "word_000030": {
+    "hiragana": "せんぷうき",
+    "kanji": "扇風機",
+    "french": "ventilateur",
+    "example_sentence": "暑いので扇風機をつけます"
+  },
+  "word_000031": {
+    "hiragana": "せんたくき",
+    "kanji": "洗濯機",
+    "french": "machine à laver",
+    "example_sentence": "洗濯機で服を洗います"
+  },
+  "word_000032": {
+    "hiragana": "でんしレンジ",
+    "kanji": "電子レンジ",
+    "french": "micro-ondes",
+    "example_sentence": "電子レンジで温めます"
+  },
+  "word_000033": {
+    "hiragana": "チンする",
+    "kanji": "",
+    "french": "chauffer",
+    "example_sentence": "お弁当をチンします"
+  },
+  "word_000034": {
+    "hiragana": "ふく",
+    "kanji": "服",
+    "french": "vêtement",
+    "example_sentence": "新しい服を買いました"
+  },
+  "word_000035": {
+    "hiragana": "あらう",
+    "kanji": "洗う",
+    "french": "laver/nettoyer",
+    "example_sentence": "服を洗います"
+  },
+  "word_000036": {
+    "hiragana": "あんないする",
+    "kanji": "案内する",
+    "french": "guider/accompagner",
+    "example_sentence": "町を案内します"
+  },
+  "word_000037": {
+    "hiragana": "かんけいがある",
+    "kanji": "関係がある",
+    "french": "être lié/avoir un rapport",
+    "example_sentence": "この二つは関係があります"
+  },
+  "word_000038": {
+    "hiragana": "かいてき",
+    "kanji": "快適",
+    "french": "confortable/agréable",
+    "example_sentence": "部屋は快適です"
+  },
+  "word_000039": {
+    "hiragana": "きめる",
+    "kanji": "決める",
+    "french": "décider/déterminer",
+    "example_sentence": "旅行の予定を決めます"
+  },
+  "word_000040": {
+    "hiragana": "とどく",
+    "kanji": "届く",
+    "french": "arriver/parvenir",
+    "example_sentence": "荷物が届きました"
+  },
+  "word_000041": {
+    "hiragana": "くらべる",
+    "kanji": "比べる",
+    "french": "comparer/confronter",
+    "example_sentence": "値段を比べます"
+  },
+  "word_000042": {
+    "hiragana": "かいもの",
+    "kanji": "買い物",
+    "french": "courses/shopping",
+    "example_sentence": "スーパーで買い物をします"
+  },
+  "word_000043": {
+    "hiragana": "しぜん",
+    "kanji": "自然",
+    "french": "nature",
+    "example_sentence": "自然を大切にしましょう"
+  },
+  "word_000044": {
+    "hiragana": "てつだう",
+    "kanji": "手伝う",
+    "french": "aider/assister",
+    "example_sentence": "母の料理を手伝います"
+  },
+  "word_000045": {
+    "hiragana": "しょうがつ",
+    "kanji": "正月",
+    "french": "nouvel an",
+    "example_sentence": "正月は家族と過ごします"
+  },
+  "word_000046": {
+    "hiragana": "すごす",
+    "kanji": "過ごす",
+    "french": "passer/séjourner",
+    "example_sentence": "家族と時間を過ごします"
+  },
+  "word_000047": {
+    "hiragana": "もどる",
+    "kanji": "戻る",
+    "french": "revenir/retourner",
+    "example_sentence": "フィンランドにもどりました"
+  },
+  "word_000048": {
+    "hiragana": "むかえる",
+    "kanji": "迎える",
+    "french": "accueillir/recevoir",
+    "example_sentence": "お客様を迎えます"
+  },
+  "word_000049": {
+    "hiragana": "むかえにくる",
+    "kanji": "迎えに来る",
+    "french": "venir chercher/venir accueillir",
+    "example_sentence": "空港に友達を迎えに来ます"
+  },
+  "word_000050": {
+    "hiragana": "さようなら",
+    "kanji": "さようなら",
+    "french": "au revoir",
+    "example_sentence": "さようなら、また会いましょう"
+  },
+  "word_000051": {
+    "hiragana": "ねんまつねんし",
+    "kanji": "年末年始",
+    "french": "fêtes de fin d'année",
+    "example_sentence": "年末年始は実家に帰ります"
+  },
+  "word_000052": {
+    "hiragana": "いそがしい",
+    "kanji": "忙しい",
+    "french": "occupé/affairé",
+    "example_sentence": "仕事でいそがしいです"
+  },
+  "word_000053": {
+    "hiragana": "よろこぶ",
+    "kanji": "喜ぶ",
+    "french": "être content/être heureux",
+    "example_sentence": "プレゼントをもらって喜びました"
+  },
+  "word_000054": {
+    "hiragana": "ずっと",
+    "kanji": "",
+    "french": "longtemps/depuis longtemps",
+    "example_sentence": "ずっと待っていました"
+  },
+  "word_000055": {
+    "hiragana": "しんせき",
+    "kanji": "親戚",
+    "french": "famille",
+    "example_sentence": "フランスで親戚に会いました"
+  },
+  "word_000056": {
+    "hiragana": "しけん",
+    "kanji": "試験",
+    "french": "examen",
+    "example_sentence": "来週試験があります"
+  },
+  "word_000057": {
+    "hiragana": "ゆうびんきょく",
+    "kanji": "郵便局",
+    "french": "poste",
+    "example_sentence": "郵便局に手紙を出しに行きます"
+  },
+  "word_000058": {
+    "hiragana": "うりきれ",
+    "kanji": "売り切れ",
+    "french": "épuisé",
+    "example_sentence": "チケットは売り切れです"
+  },
+  "word_000059": {
+    "hiragana": "りょうしん",
+    "kanji": "両親",
+    "french": "parents",
+    "example_sentence": "両親と住んでいます"
+  },
+  "word_000060": {
+    "hiragana": "おおみそか",
+    "kanji": "大晦日",
+    "french": "réveillon du nouvel an",
+    "example_sentence": "大晦日は家族と過ごします"
+  },
+  "word_000061": {
+    "hiragana": "はい",
+    "kanji": "",
+    "french": "oui",
+    "example_sentence": "はい、そうです"
+  },
+  "word_000062": {
+    "hiragana": "あいさつ",
+    "kanji": "挨拶",
+    "french": "salutation",
+    "example_sentence": "朝の挨拶をします"
+  },
+  "word_000063": {
+    "hiragana": "こたえる",
+    "kanji": "答える",
+    "french": "répondre",
+    "example_sentence": "質問に答える"
+  },
+  "word_000064": {
+    "hiragana": "けんめい",
+    "kanji": "懸命",
+    "french": "diligent",
+    "example_sentence": "懸命に勉強しています"
+  },
+  "word_000065": {
+    "hiragana": "あけましておめでとう",
+    "kanji": "明けまして御目出度う",
+    "french": "bonne année",
+    "example_sentence": "明けましておめでとうございます"
+  },
+  "word_000066": {
+    "hiragana": "ねんがじょう",
+    "kanji": "年賀状",
+    "french": "carte de vœux",
+    "example_sentence": "年賀状を書きます"
+  },
+  "word_000067": {
+    "hiragana": "はつもうで",
+    "kanji": "初詣",
+    "french": "première visite au temple",
+    "example_sentence": "初詣に行きます"
+  },
+  "word_000068": {
+    "hiragana": "おせち",
+    "kanji": "御節",
+    "french": "repas du nouvel an",
+    "example_sentence": "おせち料理を作ります"
+  },
+  "word_000069": {
+    "hiragana": "しゅうかく",
+    "kanji": "収穫",
+    "french": "récolte/moisson",
+    "example_sentence": "今年は米の収穫が多かったです"
+  },
+  "word_000070": {
+    "hiragana": "きゅうりょう",
+    "kanji": "給料",
+    "french": "salaire/paye",
+    "example_sentence": "今月の給料が入りました"
+  },
+  "word_000071": {
+    "hiragana": "あんないする",
+    "kanji": "案内する",
+    "french": "guider/accompagner",
+    "example_sentence": "町を案内します"
+  },
+  "word_000072": {
+    "hiragana": "いいえ",
+    "kanji": "",
+    "french": "non",
+    "example_sentence": "いいえ、違います"
+  },
+  "word_000073": {
+    "hiragana": "てつだう",
+    "kanji": "手伝う",
+    "french": "aider/assister",
+    "example_sentence": "母の料理を手伝います"
+  },
+  "word_000074": {
+    "hiragana": "しょうがつ",
+    "kanji": "正月",
+    "french": "nouvel an",
+    "example_sentence": "正月は家族と過ごします"
+  },
+  "word_000075": {
+    "hiragana": "すごす",
+    "kanji": "過ごす",
+    "french": "passer/séjourner",
+    "example_sentence": "家族と時間を過ごします"
+  },
+  "word_000076": {
+    "hiragana": "もどる",
+    "kanji": "戻る",
+    "french": "revenir/retourner",
+    "example_sentence": "フィンランドにもどりました"
+  },
+  "word_000077": {
+    "hiragana": "むかえる",
+    "kanji": "迎える",
+    "french": "accueillir/recevoir",
+    "example_sentence": "お客様を迎えます"
+  },
+  "word_000078": {
+    "hiragana": "むかえにくる",
+    "kanji": "迎えに来る",
+    "french": "venir chercher/venir accueillir",
+    "example_sentence": "空港に友達を迎えに来ます"
+  },
+  "word_000079": {
+    "hiragana": "ねんまつねんし",
+    "kanji": "年末年始",
+    "french": "fêtes de fin d'année",
+    "example_sentence": "年末年始は実家に帰ります"
+  },
+  "word_000080": {
+    "hiragana": "いそがしい",
+    "kanji": "忙しい",
+    "french": "occupé/affairé",
+    "example_sentence": "仕事でいそがしいです"
+  },
+  "word_000081": {
+    "hiragana": "よろこぶ",
+    "kanji": "喜ぶ",
+    "french": "être content/être heureux",
+    "example_sentence": "プレゼントをもらって喜びました"
+  },
+  "word_000082": {
+    "hiragana": "ずっと",
+    "kanji": "",
+    "french": "longtemps/depuis longtemps",
+    "example_sentence": "ずっと待っていました"
+  },
+  "word_000083": {
+    "hiragana": "にほん",
+    "kanji": "日本",
+    "french": "japon",
+    "example_sentence": "日本に住んでいます"
+  },
+  "word_000084": {
+    "hiragana": "しんせき",
+    "kanji": "親戚",
+    "french": "famille",
+    "example_sentence": "フランスで親戚に会いました"
+  },
+  "word_000085": {
+    "hiragana": "しけん",
+    "kanji": "試験",
+    "french": "examen",
+    "example_sentence": "来週試験があります"
+  },
+  "word_000086": {
+    "hiragana": "ゆうびんきょく",
+    "kanji": "郵便局",
+    "french": "poste",
+    "example_sentence": "郵便局に手紙を出しに行きます"
+  },
+  "word_000087": {
+    "hiragana": "うりきれ",
+    "kanji": "売り切れ",
+    "french": "épuisé",
+    "example_sentence": "チケットは売り切れです"
+  },
+  "word_000088": {
+    "hiragana": "りょうしん",
+    "kanji": "両親",
+    "french": "parents",
+    "example_sentence": "両親と住んでいます"
+  },
+  "word_000089": {
+    "hiragana": "おおみそか",
+    "kanji": "大晦日",
+    "french": "réveillon du nouvel an",
+    "example_sentence": "大晦日は家族と過ごします"
+  },
+  "word_000090": {
+    "hiragana": "あいさつ",
+    "kanji": "挨拶",
+    "french": "salutation",
+    "example_sentence": "朝の挨拶をします"
+  },
+  "word_000091": {
+    "hiragana": "こたえる",
+    "kanji": "答える",
+    "french": "répondre",
+    "example_sentence": "質問に答える"
+  },
+  "word_000092": {
+    "hiragana": "けんめい",
+    "kanji": "懸命",
+    "french": "diligent",
+    "example_sentence": "懸命に勉強しています"
+  },
+  "word_000093": {
+    "hiragana": "あけましておめでとう",
+    "kanji": "明けまして御目出度う",
+    "french": "bonne année",
+    "example_sentence": "明けましておめでとうございます"
+  },
+  "word_000094": {
+    "hiragana": "おはよう",
+    "kanji": "お早う",
+    "french": "bonjour",
+    "example_sentence": "おはようございます"
+  },
+  "word_000095": {
+    "hiragana": "ねんがじょう",
+    "kanji": "年賀状",
+    "french": "carte de vœux",
+    "example_sentence": "年賀状を書きます"
+  },
+  "word_000096": {
+    "hiragana": "はつもうで",
+    "kanji": "初詣",
+    "french": "première visite au temple",
+    "example_sentence": "初詣に行きます"
+  },
+  "word_000097": {
+    "hiragana": "おせち",
+    "kanji": "御節",
+    "french": "repas du nouvel an",
+    "example_sentence": "おせち料理を作ります"
+  },
+  "word_000098": {
+    "hiragana": "あげる",
+    "kanji": "上げる",
+    "french": "offrir/donner",
+    "example_sentence": "友達にプレゼントをあげました"
+  },
+  "word_000099": {
+    "hiragana": "もらう",
+    "kanji": "貰う",
+    "french": "recevoir",
+    "example_sentence": "誕生日プレゼントをもらいました"
+  },
+  "word_000100": {
+    "hiragana": "おとしだま",
+    "kanji": "お年玉",
+    "french": "étrennes",
+    "example_sentence": "お正月におとしだまをもらいました"
+  },
+  "word_000101": {
+    "hiragana": "がんじつ",
+    "kanji": "元日",
+    "french": "le premier janvier",
+    "example_sentence": "元日に初詣に行きます"
+  },
+  "word_000102": {
+    "hiragana": "かざる",
+    "kanji": "飾る",
+    "french": "décorer",
+    "example_sentence": "クリスマスツリーをかざります"
+  },
+  "word_000103": {
+    "hiragana": "ついたち",
+    "kanji": "一日",
+    "french": "le premier du mois",
+    "example_sentence": "毎月一日に予定を立てます"
+  },
+  "word_000104": {
+    "hiragana": "ぎょうじ",
+    "kanji": "行事",
+    "french": "événement/fête",
+    "example_sentence": "フランスにもいろいろなぎょうじがあります"
+  },
+  "word_000105": {
+    "hiragana": "こんばんは",
+    "kanji": "今晩は",
+    "french": "bonsoir",
+    "example_sentence": "こんばんは、お疲れ様です"
+  },
+  "word_000106": {
+    "hiragana": "むかし",
+    "kanji": "昔",
+    "french": "passé",
+    "example_sentence": "昔の写真を見ました"
+  },
+  "word_000107": {
+    "hiragana": "かっこ",
+    "kanji": "括弧",
+    "french": "parenthèse",
+    "example_sentence": "括弧の中に漢字の読み方を書きます"
+  },
+  "word_000108": {
+    "hiragana": "けんこう",
+    "kanji": "健康",
+    "french": "santé",
+    "example_sentence": "健康のために運動します"
+  },
+  "word_000109": {
+    "hiragana": "せいちょう",
+    "kanji": "成長",
+    "french": "croissance",
+    "example_sentence": "子供の成長が早いです"
+  },
+  "word_000110": {
+    "hiragana": "ながいき",
+    "kanji": "長生き",
+    "french": "longue vie",
+    "example_sentence": "おばあちゃんは長生きでした"
+  },
+  "word_000111": {
+    "hiragana": "ごうかく",
+    "kanji": "合格",
+    "french": "réussir un examen",
+    "example_sentence": "試験に合格しました"
+  },
+  "word_000112": {
+    "hiragana": "けが",
+    "kanji": "怪我",
+    "french": "blessure",
+    "example_sentence": "けがに気をつけてください"
+  },
+  "word_000113": {
+    "hiragana": "けがをする",
+    "kanji": "",
+    "french": "se blesser",
+    "example_sentence": "運動中にけがをしました"
+  },
+  "word_000114": {
+    "hiragana": "であう",
+    "kanji": "",
+    "french": "rencontrer",
+    "example_sentence": "新しい友達に出会いました"
+  },
+  "word_000115": {
+    "hiragana": "おこる",
+    "kanji": "",
+    "french": "se passer/arriver",
+    "example_sentence": "大きな地震が起こりました"
+  },
+  "word_000116": {
+    "hiragana": "おう",
+    "kanji": "王",
+    "french": "roi",
+    "example_sentence": "彼は王様のように振る舞います"
+  },
+  "word_000117": {
+    "hiragana": "じしん",
+    "kanji": "地震",
+    "french": "tremblement de terre",
+    "example_sentence": "地震に備えています"
+  },
+  "word_000118": {
+    "hiragana": "うまくいく",
+    "kanji": "",
+    "french": "bien se passer",
+    "example_sentence": "面接はうまくいきました"
+  },
+  "word_000119": {
+    "hiragana": "びょうき",
+    "kanji": "病気",
+    "french": "maladie",
+    "example_sentence": "風邪などの病気に気をつけます"
+  },
+  "word_000120": {
+    "hiragana": "ねがいごと",
+    "kanji": "願い事",
+    "french": "souhait",
+    "example_sentence": "神社で願い事をしました"
+  },
+  "word_000121": {
+    "hiragana": "しき",
+    "kanji": "式",
+    "french": "cérémonie",
+    "example_sentence": "卒業式に参加します"
+  },
+  "word_000122": {
+    "hiragana": "せいじんしき",
+    "kanji": "成人式",
+    "french": "cérémonie de passage à l'âge adulte",
+    "example_sentence": "来年成人式があります"
+  },
+  "word_000123": {
+    "hiragana": "し",
+    "kanji": "市",
+    "french": "ville",
+    "example_sentence": "この市は大きいです"
+  },
+  "word_000124": {
+    "hiragana": "いわう",
+    "kanji": "祝う",
+    "french": "célébrer",
+    "example_sentence": "誕生日を祝います"
+  },
+  "word_000125": {
+    "hiragana": "いのる",
+    "kanji": "祈る",
+    "french": "prier",
+    "example_sentence": "平和を祈ります"
+  },
+  "word_000126": {
+    "hiragana": "ねがう",
+    "kanji": "願う",
+    "french": "souhaiter",
+    "example_sentence": "幸せを願います"
+  },
+  "word_000127": {
+    "hiragana": "たいくつ",
+    "kanji": "退屈",
+    "french": "ennuyeux/barbant",
+    "example_sentence": "この映画はたいくつです"
+  },
+  "word_000128": {
+    "hiragana": "たなばた",
+    "kanji": "七夕",
+    "french": "fête des étoiles",
+    "example_sentence": "七夕に願い事を書きます"
+  },
+  "word_000129": {
+    "hiragana": "ゆめ",
+    "kanji": "夢",
+    "french": "rêve",
+    "example_sentence": "私の夢は先生になることです"
+  },
+  "word_000130": {
+    "hiragana": "ゆうめい",
+    "kanji": "有名",
+    "french": "célèbre",
+    "example_sentence": "この映画は有名です"
+  },
+  "word_000131": {
+    "hiragana": "わかい",
+    "kanji": "若い",
+    "french": "jeune",
+    "example_sentence": "彼はまだ若いです"
+  },
+  "word_000132": {
+    "hiragana": "おしらせ",
+    "kanji": "お知らせ",
+    "french": "annonce/notification",
+    "example_sentence": "重要なお知らせがあります"
+  },
+  "word_000133": {
+    "hiragana": "さんか",
+    "kanji": "参加",
+    "french": "participation",
+    "example_sentence": "イベントに参加します"
+  },
+  "word_000134": {
+    "hiragana": "むりょう",
+    "kanji": "無料",
+    "french": "gratuit",
+    "example_sentence": "入場は無料です"
+  },
+  "word_000135": {
+    "hiragana": "いけばな",
+    "kanji": "生け花",
+    "french": "arrangement floral",
+    "example_sentence": "生け花を習っています"
+  },
+  "word_000136": {
+    "hiragana": "こまる",
+    "kanji": "困る",
+    "french": "avoir des problèmes",
+    "example_sentence": "困ったときは相談してください"
+  },
+  "word_000137": {
+    "hiragana": "ならう",
+    "kanji": "習う",
+    "french": "apprendre",
+    "example_sentence": "日本語を習っています"
+  }
+}

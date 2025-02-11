@@ -12,7 +12,35 @@ A command-line tool for learning Japanese vocabulary with spaced repetition and 
 - Local JSON backup
 - Smart answer checking with typo tolerance
 - Example sentences with translations
+<<<<<<< HEAD
 - Clean and modular code structure
+=======
+
+### Vim-like Commands
+- `:h` - Show help
+- `:q` - Quit to menu (saves progress)
+- `:q!` - Force quit program
+- `:w` - Show save status
+- `:s` - Show word statistics
+- `:S` - Show all statistics
+- `:e` - Show example with translation
+- `:d` - Don't know (show answer)
+
+### Git Integration
+- Automatic commits of your progress
+- Automatic push to remote repository
+- Timestamped commits for tracking learning sessions
+- Progress backup on every quit or interrupt
+
+### Learning Features
+- Smart answer validation:
+  - Handles multiple correct translations
+  - Detects and suggests corrections for accents
+  - Identifies minor typos and asks for confirmation
+- Example sentences with translations
+- Detailed statistics for each word
+- Progress tracking with success rates
+>>>>>>> parent of 734c9ca (using firebase)
 
 ## Installation
 

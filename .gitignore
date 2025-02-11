@@ -189,7 +189,3 @@ firebase-credentials.json
 
 # Progress file (now using Firebase)
 progress.json
-
-# Data directory
-data/*
-!data/.gitkeep
