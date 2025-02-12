@@ -16,6 +16,7 @@ jobs:
       FIREBASE_USER_EMAIL: test@example.com
       PYTHONIOENCODING: utf-8
       LANG: ja_JP.UTF-8
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     
     steps:
     - uses: actions/checkout@v4
@@ -69,6 +70,7 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         fail_ci_if_error: true
         
