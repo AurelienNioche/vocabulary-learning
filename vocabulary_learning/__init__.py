@@ -1,0 +1,1 @@
+"""Japanese vocabulary learning tool.""" 
