@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "A command-line tool for learning Japanese vocabulary with spaced repetition and Firebase integration"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "AGPL-3.0"
 authors = [
     { name = "Aurelien Nioche", email = "nioche.aurelien@gmail.com" },
 ]
@@ -28,6 +28,7 @@ dev = [
     "isort>=5.0.0",
     "flake8>=4.0.0",
     "pytest-cov>=4.0.0",
+    "pre-commit>=3.5.0",
 ]
 
 [project.scripts]
