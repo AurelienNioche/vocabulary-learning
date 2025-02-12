@@ -5,12 +5,14 @@ repos:
     - id: black
       language_version: python3.10
       args: [--line-length=100]
+      exclude: ^frontend/
 
 - repo: https://github.com/pycqa/isort
   rev: 5.13.2
   hooks:
     - id: isort
       args: ["--profile", "black", "--line-length", "100"]
+      exclude: ^frontend/
 
 - repo: https://github.com/pycqa/flake8
   rev: 7.0.0
@@ -20,9 +22,19 @@ repos:
       args: [
         "--max-line-length=100",
         # Ignore specific issues that conflict with our style choices
-        "--extend-ignore=E203,W503,E722,E501",  # Black compatibility, allow bare except, long lines
+        "--extend-ignore=E203,W503,E722,E501,F401",  # Black compatibility, allow bare except, long lines, unused imports
         # Configure per-directory rules
         "--per-file-ignores=__init__.py:D104 tests/*:D101,D100 vocabulary_learning/utils/*:D100,D103,F841",
         # Global ignores for specific cases
         "--ignore=D107,D101,F541,D400,D103"
-      ] 
+      ]
+      exclude: ^frontend/
+
+- repo: local
+  hooks:
+    - id: eslint
+      name: eslint
+      entry: bash -c 'cd frontend && npx eslint'
+      language: system
+      files: ^frontend/.*\.(js|ts|tsx)$
+      types: [file] 

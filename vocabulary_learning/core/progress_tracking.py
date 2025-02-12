@@ -2,6 +2,7 @@
 
 import random
 from datetime import datetime
+from typing import Dict, Optional
 
 
 def update_progress(word, success, progress, save_callback):
@@ -61,62 +62,111 @@ def update_progress(word, success, progress, save_callback):
     save_callback()
 
 
-def calculate_priority(word_data, active_words_count):
-    """Calculate priority score for a word based on SuperMemo 2 algorithm."""
-    MAX_ACTIVE_WORDS = 8  # Maximum number of words to learn at once
+def calculate_priority(word_data: Optional[Dict], active_words_count: int) -> float:
+    """Calculate priority score for a word.
 
-    # If this is a new word, check if we're already at max active words
-    if word_data is None:
-        if active_words_count >= MAX_ACTIVE_WORDS:
-            return 0.0  # Don't introduce new words yet
-        return 1.0  # Highest priority for new words if under the limit
+    The priority score is based on several factors:
+    1. Time since last review (higher priority for words not seen in a while)
+    2. Success rate (higher priority for words with lower success rates)
+    3. Number of attempts (higher priority for newer words)
+    4. Last attempt result (higher priority for words that failed last time)
+    5. Current interval from SuperMemo 2 algorithm
 
-    # Get basic stats
-    successes = word_data.get("successes", 0)
-    attempts = word_data.get("attempts", 0)
-    interval = word_data.get("interval", 4)  # Default to 4 hours if not set
-    last_seen = datetime.fromisoformat(word_data.get("last_seen", datetime.now().isoformat()))
-    hours_since_last = (datetime.now() - last_seen).total_seconds() / 3600.0
+    Args:
+        word_data: Word progress data or None if no progress
+        active_words_count: Number of words being actively learned
 
-    # Calculate success rate
-    success_rate = (successes / max(attempts, 1)) * 100
+    Returns:
+        Priority score (higher means higher priority)
+    """
+    if not word_data:
+        # New words get high priority, but not maximum
+        # This ensures some balance between new and review words
+        return 0.8
 
-    # If the word was last seen too recently, give it very low priority
-    if hours_since_last < interval:
-        return 0.01  # Too soon to review
+    # Calculate time factor
+    time_factor = 0.0
+    if word_data.get("last_seen"):
+        try:
+            last_seen = datetime.fromisoformat(word_data["last_seen"])
+            hours_since = (datetime.now() - last_seen).total_seconds() / 3600.0
+            scheduled_interval = word_data.get("interval", 0)
 
-    # Calculate how overdue the word is
-    overdue_factor = max(0, (hours_since_last - interval) / interval)
+            if hours_since >= scheduled_interval:
+                # Word is due or overdue
+                time_factor = min(2.0, 1.0 + (hours_since - scheduled_interval) / 24.0)
+            else:
+                # Word is not due yet
+                time_factor = hours_since / scheduled_interval
+        except (ValueError, TypeError):
+            time_factor = 1.0
+    else:
+        # Never seen words get high time factor
+        time_factor = 0.9
 
-    # Cap the overdue factor to avoid extremely high priorities for long-forgotten words
-    overdue_factor = min(overdue_factor, 2.0)
-
-    # Recent failure bonus
-    failure_bonus = 0.3 if word_data.get("last_attempt_was_failure", False) else 0.0
-
-    # Combine factors with weights
-    priority = (
-        (1 - success_rate / 100) * 0.4
-        + overdue_factor * 0.4  # Success rate component
-        + failure_bonus  # Overdue component
-        + random.uniform(0, 0.1)  # Failure bonus  # Small random factor
+    # Calculate success rate factor (lower success rate = higher priority)
+    success_rate = (
+        word_data["successes"] / word_data["attempts"] if word_data.get("attempts", 0) > 0 else 0.0
     )
+    success_factor = 1.0 - (success_rate * 0.5)  # Scale to [0.5, 1.0]
 
-    # If we're at the max active words limit, only allow review of existing active words
-    if active_words_count >= MAX_ACTIVE_WORDS and attempts < 1:
-        return 0.0
+    # Calculate attempts factor (fewer attempts = higher priority)
+    attempts = word_data.get("attempts", 0)
+    attempts_factor = 1.0 / (1.0 + attempts / 10.0)  # Decay with more attempts
+
+    # Factor in last attempt result
+    last_attempt_factor = 1.2 if word_data.get("last_attempt_was_failure") else 1.0
+
+    # Calculate final priority score
+    base_priority = time_factor * 0.4 + success_factor * 0.3 + attempts_factor * 0.3
+    priority = base_priority * last_attempt_factor
+
+    # Scale priority based on active words
+    # This helps prevent overwhelming the user with too many active words
+    if active_words_count > 20:
+        priority *= 20.0 / active_words_count
 
     return priority
 
 
-def count_active_learning_words(progress):
-    """Count how many words are currently being actively learned (success rate < 80%)."""
+def count_active_learning_words(progress_data: Dict) -> int:
+    """Count how many words are being actively learned.
+
+    A word is considered "active" if:
+    1. It has been seen in the last 30 days
+    2. It hasn't been mastered yet (success rate < 90% or fewer than 5 successes)
+
+    Args:
+        progress_data: Dictionary of word progress data
+
+    Returns:
+        Number of active words
+    """
     active_count = 0
-    for _, data in progress.items():
-        attempts = data.get("attempts", 0)
-        if attempts > 0:  # Word has been seen at least once
-            successes = data.get("successes", 0)
-            success_rate = (successes / attempts) * 100
-            if success_rate < 80:  # Not yet mastered
-                active_count += 1
+    thirty_days_ago = datetime.now().timestamp() - (30 * 24 * 60 * 60)
+
+    for word_data in progress_data.values():
+        # Skip if no attempts
+        if not word_data.get("attempts", 0):
+            continue
+
+        # Check if recently seen
+        try:
+            last_seen = datetime.fromisoformat(word_data["last_seen"]).timestamp()
+            if last_seen < thirty_days_ago:
+                continue
+        except (KeyError, ValueError, TypeError):
+            continue
+
+        # Check if not yet mastered
+        attempts = word_data.get("attempts", 0)
+        successes = word_data.get("successes", 0)
+
+        if attempts == 0:
+            continue
+
+        success_rate = successes / attempts
+        if success_rate < 0.9 or successes < 5:
+            active_count += 1
+
     return active_count
