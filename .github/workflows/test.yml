@@ -9,6 +9,14 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    
+    env:
+      FIREBASE_CREDENTIALS_PATH: ${{ github.workspace }}/tests/fixtures/mock-firebase-credentials.json
+      FIREBASE_DATABASE_URL: https://test-db.firebaseio.com
+      FIREBASE_USER_EMAIL: test@example.com
+      PYTHONIOENCODING: utf-8
+      LANG: ja_JP.UTF-8
+    
     steps:
     - uses: actions/checkout@v4
     
@@ -16,6 +24,17 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: "3.10"
+        
+    - name: Set up Japanese locale
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y language-pack-ja
+        sudo update-locale LANG=ja_JP.UTF-8
+        
+    - name: Create mock Firebase credentials
+      run: |
+        mkdir -p tests/fixtures
+        echo '{"type": "service_account"}' > tests/fixtures/mock-firebase-credentials.json
         
     - name: Install dependencies
       run: |

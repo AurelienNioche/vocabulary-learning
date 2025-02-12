@@ -1,9 +1,11 @@
 """UI components for displaying information and statistics."""
 
-import pandas as pd
 from datetime import datetime
-from rich.table import Table
 from pathlib import Path
+
+import pandas as pd
+from rich.table import Table
+
 
 def show_progress(vocabulary, progress, console):
     """Display progress statistics in a nice table format."""
@@ -17,18 +19,14 @@ def show_progress(vocabulary, progress, console):
     table.add_column("Last Practice", justify="right")
 
     for _, row in vocabulary.iterrows():
-        japanese = row['japanese']
-        kanji = row['kanji'] if pd.notna(row['kanji']) else ""
-        french = row['french']
-        stats = progress.get(japanese, {
-            'attempts': 0,
-            'successes': 0,
-            'last_seen': 'Never'
-        })
-        
-        attempts = stats['attempts']
-        success_rate = (stats['successes'] / attempts * 100) if attempts > 0 else 0
-        
+        japanese = row["japanese"]
+        kanji = row["kanji"] if pd.notna(row["kanji"]) else ""
+        french = row["french"]
+        stats = progress.get(japanese, {"attempts": 0, "successes": 0, "last_seen": "Never"})
+
+        attempts = stats["attempts"]
+        success_rate = (stats["successes"] / attempts * 100) if attempts > 0 else 0
+
         # Determine status
         if attempts >= 10:
             if success_rate >= 80:
@@ -39,9 +37,9 @@ def show_progress(vocabulary, progress, console):
                 status = "[red]Needs Work[/red]"
         else:
             status = f"[blue]{attempts}/10[/blue]"
-        
-        last_seen = stats['last_seen']
-        if last_seen != 'Never':
+
+        last_seen = stats["last_seen"]
+        if last_seen != "Never":
             last_seen_date = datetime.fromisoformat(last_seen)
             days_ago = (datetime.now() - last_seen_date).days
             if days_ago == 0:
@@ -52,16 +50,11 @@ def show_progress(vocabulary, progress, console):
                 last_seen = f"{days_ago} days ago"
 
         table.add_row(
-            japanese,
-            kanji,
-            french,
-            status,
-            f"{success_rate:.0f}%",
-            str(attempts),
-            last_seen
+            japanese, kanji, french, status, f"{success_rate:.0f}%", str(attempts), last_seen
         )
 
     console.print(table)
+
 
 def show_word_statistics(word_pair, progress, console):
     """Display statistics for a specific word."""
@@ -69,16 +62,14 @@ def show_word_statistics(word_pair, progress, console):
     table.add_column("Information", style="bold")
     table.add_column("Value", style="green")
 
-    stats = progress.get(word_pair['japanese'], {
-        'attempts': 0,
-        'successes': 0,
-        'last_seen': 'Never',
-        'review_intervals': []
-    })
+    stats = progress.get(
+        word_pair["japanese"],
+        {"attempts": 0, "successes": 0, "last_seen": "Never", "review_intervals": []},
+    )
 
-    success_rate = (stats['successes'] / stats['attempts'] * 100) if stats['attempts'] > 0 else 0
-    last_seen = stats['last_seen']
-    if last_seen != 'Never':
+    success_rate = (stats["successes"] / stats["attempts"] * 100) if stats["attempts"] > 0 else 0
+    last_seen = stats["last_seen"]
+    if last_seen != "Never":
         last_seen_date = datetime.fromisoformat(last_seen)
         days_ago = (datetime.now() - last_seen_date).days
         if days_ago == 0:
@@ -89,17 +80,17 @@ def show_word_statistics(word_pair, progress, console):
             last_seen = f"{days_ago} days ago"
 
     # Calculate average interval between reviews
-    intervals = stats.get('review_intervals', [])
+    intervals = stats.get("review_intervals", [])
     avg_interval = sum(intervals) / len(intervals) if intervals else 0
 
-    table.add_row("Japanese", word_pair['japanese'])
-    if pd.notna(word_pair['kanji']) and word_pair['kanji']:
-        table.add_row("Kanji", word_pair['kanji'])
-    table.add_row("French", word_pair['french'])
+    table.add_row("Japanese", word_pair["japanese"])
+    if pd.notna(word_pair["kanji"]) and word_pair["kanji"]:
+        table.add_row("Kanji", word_pair["kanji"])
+    table.add_row("French", word_pair["french"])
     table.add_row("Success Rate", f"{success_rate:.0f}%")
-    table.add_row("Total Attempts", str(stats['attempts']))
-    table.add_row("Successful Attempts", str(stats['successes']))
-    table.add_row("Failed Attempts", str(stats['attempts'] - stats['successes']))
+    table.add_row("Total Attempts", str(stats["attempts"]))
+    table.add_row("Successful Attempts", str(stats["successes"]))
+    table.add_row("Failed Attempts", str(stats["attempts"] - stats["successes"]))
     table.add_row("Last Practice", last_seen)
     if avg_interval > 0:
         if avg_interval < 24:
@@ -108,6 +99,7 @@ def show_word_statistics(word_pair, progress, console):
             table.add_row("Average Review Interval", f"{avg_interval/24:.1f} days")
 
     console.print(table)
+
 
 def show_save_status(progress_file, progress, last_save_time, console):
     """Show the current save status and statistics."""
@@ -118,12 +110,12 @@ def show_save_status(progress_file, progress, last_save_time, console):
     # Get save file info
     save_file = Path(progress_file)
     file_exists = save_file.exists()
-    
+
     if file_exists:
         file_size = save_file.stat().st_size
         last_modified = datetime.fromtimestamp(save_file.stat().st_mtime)
         seconds_since_save = (datetime.now() - last_save_time).total_seconds()
-        
+
         table.add_row("Auto-save Status", "Active (saves after each answer)")
         table.add_row("Last Save", f"{seconds_since_save:.1f} seconds ago")
         table.add_row("Save File", progress_file)
@@ -137,13 +129,14 @@ def show_save_status(progress_file, progress, last_save_time, console):
 
     console.print(table)
 
+
 def show_help(vim_commands, console):
     """Display Vim-like commands help."""
     table = Table(title="Available Commands")
     table.add_column("Command", style="bold")
     table.add_column("Description", style="green")
-    
+
     for cmd, desc in vim_commands.items():
         table.add_row(cmd, desc)
-        
-    console.print(table) 
+
+    console.print(table)

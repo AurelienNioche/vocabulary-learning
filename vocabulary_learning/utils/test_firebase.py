@@ -1,108 +1,96 @@
+"""Test Firebase connection and functionality."""
+
+import json
 import os
-from dotenv import load_dotenv
+
 import firebase_admin
-from firebase_admin import credentials, db, auth
+from dotenv import load_dotenv
+from firebase_admin import credentials, db
 from rich.console import Console
 from rich.table import Table
-from rich.tree import Tree
-from rich import print_json
-import json
 
-def initialize_firebase():
-    """Initialize Firebase connection."""
+console = Console()
+
+
+def test_firebase_connection():
+    """Test Firebase connection and display data."""
     load_dotenv()
-    cred_path = os.path.expandvars(os.getenv('FIREBASE_CREDENTIALS_PATH'))
-    
-    if not os.path.exists(cred_path):
-        raise FileNotFoundError(f"Credentials file not found at {cred_path}")
-    
-    try:
-        app = firebase_admin.get_app()
-    except ValueError:
-        cred = credentials.Certificate(cred_path)
-        app = firebase_admin.initialize_app(cred, {
-            'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
-        })
-    
-    return app
 
-def view_data(path=None):
-    """View data from Firebase in a nicely formatted way."""
-    console = Console()
-    
+    cred_path = os.path.expandvars(os.getenv("FIREBASE_CREDENTIALS_PATH"))
+
+    if not os.path.exists(cred_path):
+        console.print(f"[red]Error: Firebase credentials not found at {cred_path}[/red]")
+        return
+
     try:
-        # Initialize Firebase if not already initialized
-        initialize_firebase()
-        
-        # Get reference to the specified path or root
-        ref = db.reference(path) if path else db.reference('/')
-        
-        # Get the data
-        data = ref.get()
-        
-        if not data:
-            console.print("[yellow]No data found.[/yellow]")
-            return
-        
-        # Print as formatted JSON
-        console.print("\n[bold blue]Firebase Data:[/bold blue]")
-        print_json(json.dumps(data, indent=2, ensure_ascii=False))
-        
-        # If it's vocabulary data, also show as table
-        if path and 'vocabulary' in path:
-            console.print("\n[bold blue]Vocabulary Table:[/bold blue]")
-            table = Table(show_header=True)
-            table.add_column("Hiragana", style="bold")
-            table.add_column("Kanji", style="cyan")
-            table.add_column("French", style="green")
-            table.add_column("Example", style="yellow")
-            
-            for word_id, word_data in data.items():
-                table.add_row(
-                    word_data.get('hiragana', ''),
-                    word_data.get('kanji', ''),
-                    word_data.get('french', ''),
-                    word_data.get('example_sentence', '')[:50] + '...' if word_data.get('example_sentence', '') else ''
-                )
-            
-            console.print(table)
-        
-        # If it's progress data, show as table
-        elif path and 'progress' in path:
-            console.print("\n[bold blue]Progress Table:[/bold blue]")
-            table = Table(show_header=True)
-            table.add_column("Word", style="bold")
-            table.add_column("Attempts", style="cyan")
-            table.add_column("Successes", style="green")
-            table.add_column("Success Rate", style="yellow")
-            table.add_column("Last Seen", style="magenta")
-            
-            for word, progress in data.items():
-                attempts = progress.get('attempts', 0)
-                successes = progress.get('successes', 0)
-                success_rate = f"{(successes/attempts*100):.1f}%" if attempts > 0 else "0%"
-                
-                table.add_row(
-                    word,
-                    str(attempts),
-                    str(successes),
-                    success_rate,
-                    progress.get('last_seen', 'Never')
-                )
-            
-            console.print(table)
-            
+        # Initialize Firebase
+        try:
+            app = firebase_admin.get_app()
+            console.print("[dim]Using existing Firebase connection[/dim]")
+        except ValueError:
+            cred = credentials.Certificate(cred_path)
+            app = firebase_admin.initialize_app(
+                cred, {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")}
+            )
+
+        # Get user credentials
+        email = os.getenv("FIREBASE_USER_EMAIL")
+        if not email:
+            raise ValueError("Firebase user email not found in .env")
+
+        # Get user ID
+        user_id = "test_user"  # For testing purposes
+        console.print(f"[dim]Using test user ID: {user_id}[/dim]")
+
+        # Get references
+        progress_ref = db.reference(f"/progress/{user_id}")
+        vocab_ref = db.reference(f"/vocabulary/{user_id}")
+
+        # Get data
+        progress_data = progress_ref.get() or {}
+        vocab_data = vocab_ref.get() or {}
+
+        # Display data
+        console.print("\n[bold]Progress Data:[/bold]")
+        console.print_json(json.dumps(progress_data, indent=2, ensure_ascii=False))
+
+        # Display vocabulary
+        table = Table(title="Vocabulary")
+        table.add_column("ID", style="cyan")
+        table.add_column("Hiragana", style="magenta")
+        table.add_column("Kanji", style="green")
+        table.add_column("French", style="yellow")
+
+        for word_id, word_data in vocab_data.items():
+            table.add_row(
+                word_id,
+                word_data["hiragana"],
+                word_data["kanji"],
+                word_data["french"],
+            )
+
+        console.print(table)
+
+        # Display progress statistics
+        table = Table(title="Progress Statistics")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="green")
+
+        total_words = len(vocab_data)
+        words_started = len(progress_data)
+        words_mastered = sum(1 for data in progress_data.values() if data["successes"] >= 5)
+
+        table.add_row("Total Words", str(total_words))
+        table.add_row("Words Started", str(words_started))
+        table.add_row("Words Mastered", str(words_mastered))
+
+        console.print(table)
+
+        console.print("[green]✓ Firebase connection test successful![/green]")
+
     except Exception as e:
-        console.print(f"[red]Error viewing data: {str(e)}[/red]")
+        console.print(f"[red]Error: {str(e)}[/red]")
+
 
 if __name__ == "__main__":
-    # Example usage
-    console = Console()
-    console.print("\n[bold blue]Firebase Data Viewer[/bold blue]")
-    console.print("[dim]Available paths:[/dim]")
-    console.print("1. [cyan]/[/cyan] (root)")
-    console.print("2. [cyan]/vocabulary/{user_id}[/cyan] (vocabulary data)")
-    console.print("3. [cyan]/progress/{user_id}[/cyan] (progress data)")
-    
-    path = input("\nEnter path to view (or press Enter for root): ").strip()
-    view_data(path if path else None) 
+    test_firebase_connection()
