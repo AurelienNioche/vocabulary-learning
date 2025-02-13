@@ -136,38 +136,61 @@ def practice_mode(
 
 
 def select_word(vocabulary, progress):
-    """Select the next word to learn based on priority."""
+    """Select the next word to practice based on priority and active word limit.
+
+    Args:
+        vocabulary: DataFrame containing vocabulary words
+        progress: Dictionary containing progress data for each word
+
+    Returns:
+        Selected word as a DataFrame row, or None if no word is available
+    """
     if len(vocabulary) == 0:
         return None
 
     # Count active learning words
     active_words_count = count_active_learning_words(progress)
 
-    # First, look for words that haven't been practiced yet
-    new_words = vocabulary[~vocabulary["japanese"].isin(progress.keys())]
-    if not new_words.empty and active_words_count < 8:
-        # Return the first new word (maintaining order)
-        return new_words.iloc[0]
+    # If we've reached the active words limit, only select from existing words
+    if active_words_count >= 8:
+        # Calculate priorities only for words in progress
+        word_priorities = []
+        for _, row in vocabulary.iterrows():
+            japanese_word = row["japanese"]
+            if japanese_word in progress:
+                word_data = progress[japanese_word]
+                priority = calculate_priority(word_data, active_words_count)
+                if priority > 0:  # Only include words that need review
+                    word_priorities.append((japanese_word, priority))
 
-    # If all words have been practiced at least once, use the priority system
-    word_priorities = []
-    for _, row in vocabulary.iterrows():
-        japanese_word = row["japanese"]
-        word_data = progress.get(japanese_word)
-        priority = calculate_priority(word_data, active_words_count)
-        word_priorities.append((japanese_word, priority))
+        # Sort by priority and add some randomness
+        if word_priorities:
+            word_priorities.sort(key=lambda x: x[1] + random.random() * 0.1, reverse=True)
+            selected_word = word_priorities[0][0]
+            return vocabulary[vocabulary["japanese"] == selected_word].iloc[0]
+        return None
+    else:
+        # First, look for words that haven't been practiced yet
+        new_words = vocabulary[~vocabulary["japanese"].isin(progress.keys())]
+        if not new_words.empty:
+            # Return the first new word (maintaining order)
+            return new_words.iloc[0]
 
-    # Sort by priority and add some randomness
-    word_priorities.sort(key=lambda x: x[1] + random.random() * 0.1, reverse=True)
+        # If all words have been practiced at least once, use the priority system
+        word_priorities = []
+        for _, row in vocabulary.iterrows():
+            japanese_word = row["japanese"]
+            word_data = progress.get(japanese_word)
+            priority = calculate_priority(word_data, active_words_count)
+            if priority > 0:  # Only include words that need review
+                word_priorities.append((japanese_word, priority))
 
-    # Filter out words with zero priority (not due for review)
-    valid_words = [(word, prio) for word, prio in word_priorities if prio > 0]
-
-    if not valid_words:
-        return None  # No words available for review
-
-    selected_word = valid_words[0][0]
-    return vocabulary[vocabulary["japanese"] == selected_word].iloc[0]
+        # Sort by priority and add some randomness
+        if word_priorities:
+            word_priorities.sort(key=lambda x: x[1] + random.random() * 0.1, reverse=True)
+            selected_word = word_priorities[0][0]
+            return vocabulary[vocabulary["japanese"] == selected_word].iloc[0]
+        return None
 
 
 def check_answer(user_answer, correct_answer):

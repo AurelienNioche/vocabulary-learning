@@ -29,9 +29,13 @@ PACKAGE_ROOT = Path(__file__).parent
 
 
 class VocabularyLearner:
-    def __init__(self, vocab_file="data/vocabulary.json", progress_file="data/progress.json"):
-        self.vocab_file = str(PACKAGE_ROOT / vocab_file)
-        self.progress_file = str(PACKAGE_ROOT / progress_file)
+    def __init__(
+        self,
+        vocab_file="vocabulary_learning/data/vocabulary.json",
+        progress_file="vocabulary_learning/data/progress.json",
+    ):
+        self.vocab_file = vocab_file
+        self.progress_file = progress_file
 
         # Ensure data directory exists
         data_dir = Path(self.vocab_file).parent

@@ -117,6 +117,85 @@ class TestPractice(unittest.TestCase):
         self.assertFalse(is_correct)
         self.assertIsNone(message)
 
+    def test_new_words_suggested_after_mastery(self):
+        """Test that new words are suggested when words are mastered."""
+        # Create a progress dictionary with 8 mastered words
+        progress = {}
+        for i in range(8):
+            progress[f"word_{i}"] = {
+                "attempts": 10,
+                "successes": 9,  # 90% success rate
+                "last_seen": "2024-02-11T12:00:00",
+                "interval": 24,
+                "last_attempt_was_failure": False,
+                "easiness_factor": 2.5,
+            }
+
+        # Create a vocabulary with the mastered words plus some new ones
+        vocab_data = []
+        # Add the mastered words
+        for i in range(8):
+            vocab_data.append(
+                {
+                    "japanese": f"word_{i}",
+                    "kanji": "",
+                    "french": f"french_{i}",
+                    "example_sentence": "",
+                }
+            )
+        # Add some new words
+        for i in range(8, 12):
+            vocab_data.append(
+                {
+                    "japanese": f"word_{i}",
+                    "kanji": "",
+                    "french": f"french_{i}",
+                    "example_sentence": "",
+                }
+            )
+        vocabulary = pd.DataFrame(vocab_data)
+
+        # Test word selection
+        selected = select_word(vocabulary, progress)
+
+        # The selected word should be one of the new words (word_8 through word_11)
+        self.assertIn(selected["japanese"], [f"word_{i}" for i in range(8, 12)])
+
+    def test_word_mastery_criteria(self):
+        """Test the criteria for considering a word mastered."""
+        from vocabulary_learning.core.progress_tracking import count_active_learning_words
+
+        progress = {
+            # Word with high success rate but not enough attempts
+            "word_1": {
+                "attempts": 4,
+                "successes": 4,  # 100% but only 4 successes
+                "last_seen": "2024-02-11T12:00:00",
+            },
+            # Word with enough attempts but low success rate
+            "word_2": {
+                "attempts": 10,
+                "successes": 8,  # 80% success rate
+                "last_seen": "2024-02-11T12:00:00",
+            },
+            # Word that meets mastery criteria
+            "word_3": {
+                "attempts": 10,
+                "successes": 9,  # 90% success rate
+                "last_seen": "2024-02-11T12:00:00",
+            },
+            # Word that exceeds mastery criteria
+            "word_4": {
+                "attempts": 15,
+                "successes": 14,  # 93% success rate
+                "last_seen": "2024-02-11T12:00:00",
+            },
+        }
+
+        # Count active words (should be 2 - word_1 and word_2)
+        active_count = count_active_learning_words(progress)
+        self.assertEqual(active_count, 2, "Only non-mastered words should be counted as active")
+
     @patch("vocabulary_learning.core.practice.exit_with_save", side_effect=SystemExit)
     @patch("builtins.input", side_effect=[":h", ":s", ":q"])
     def test_practice_mode_commands(self, mock_input, mock_exit):

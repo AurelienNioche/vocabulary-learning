@@ -132,9 +132,10 @@ def calculate_priority(word_data: Optional[Dict], active_words_count: int) -> fl
 def count_active_learning_words(progress_data: Dict) -> int:
     """Count how many words are being actively learned.
 
-    A word is considered "active" if:
-    1. It has been seen in the last 30 days
-    2. It hasn't been mastered yet (success rate < 90% or fewer than 5 successes)
+    A word is considered "active" if it hasn't been mastered yet.
+    A word is considered mastered if:
+    1. It has at least 5 successful reviews
+    2. It has a success rate of at least 90%
 
     Args:
         progress_data: Dictionary of word progress data
@@ -143,29 +144,18 @@ def count_active_learning_words(progress_data: Dict) -> int:
         Number of active words
     """
     active_count = 0
-    thirty_days_ago = datetime.now().timestamp() - (30 * 24 * 60 * 60)
 
     for word_data in progress_data.values():
         # Skip if no attempts
-        if not word_data.get("attempts", 0):
-            continue
-
-        # Check if recently seen
-        try:
-            last_seen = datetime.fromisoformat(word_data["last_seen"]).timestamp()
-            if last_seen < thirty_days_ago:
-                continue
-        except (KeyError, ValueError, TypeError):
-            continue
-
-        # Check if not yet mastered
         attempts = word_data.get("attempts", 0)
-        successes = word_data.get("successes", 0)
-
         if attempts == 0:
             continue
 
+        # Check mastery criteria
+        successes = word_data.get("successes", 0)
         success_rate = successes / attempts
+
+        # A word is active if it's not mastered
         if success_rate < 0.9 or successes < 5:
             active_count += 1
 

@@ -82,7 +82,7 @@ def load_from_firebase():
         progress_ref = db.reference(f"/progress/{user_id}")
 
         # Create data directory if it doesn't exist
-        data_dir = Path("data")
+        data_dir = Path("vocabulary_learning/data")
         data_dir.mkdir(exist_ok=True)
 
         # Load vocabulary data

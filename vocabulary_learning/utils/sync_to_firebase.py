@@ -58,49 +58,58 @@ def sync_to_firebase():
 
         # Set up database references
         vocab_ref = db.reference(f"/vocabulary/{user_id}")
+        progress_ref = db.reference(f"/progress/{user_id}")
 
-        # Read local vocabulary
-        json_path = Path("data/vocabulary.json")
-        if not json_path.exists():
-            console.print("[red]Error: vocabulary.json not found[/red]")
-            console.print(
-                "[yellow]Please make sure you have a vocabulary file in the data directory.[/yellow]"
-            )
-            return
+        # Read local files
+        files_to_sync = {
+            "vocabulary": {"path": "vocabulary_learning/data/vocabulary.json", "ref": vocab_ref},
+            "progress": {"path": "vocabulary_learning/data/progress.json", "ref": progress_ref},
+        }
 
-        with open(json_path, "r", encoding="utf-8") as f:
-            vocab_data = json.load(f)
+        for data_type, config in files_to_sync.items():
+            json_path = Path(config["path"])
+            if not json_path.exists():
+                console.print(f"[red]Error: {json_path} not found[/red]")
+                console.print(
+                    f"[yellow]Please make sure you have a {data_type} file in the data directory.[/yellow]"
+                )
+                continue
 
-        # Confirm sync if there's existing data
-        existing_data = vocab_ref.get()
-        if existing_data:
-            if not Confirm.ask(
-                "[yellow]Existing data found in Firebase. Do you want to overwrite it?[/yellow]"
-            ):
-                console.print("[yellow]Operation cancelled.[/yellow]")
-                return
+            with open(json_path, "r", encoding="utf-8") as f:
+                local_data = json.load(f)
 
-        # Upload to Firebase
-        console.print("[dim]Uploading vocabulary to Firebase...[/dim]")
-        vocab_ref.set(vocab_data)
+            # Confirm sync if there's existing data
+            existing_data = config["ref"].get()
+            if existing_data:
+                if not Confirm.ask(
+                    f"[yellow]Existing {data_type} data found in Firebase. Do you want to overwrite it?[/yellow]"
+                ):
+                    console.print(f"[yellow]{data_type.capitalize()} sync cancelled.[/yellow]")
+                    continue
 
-        # Verify upload
-        uploaded_data = vocab_ref.get()
-        if not uploaded_data:
-            raise Exception("Failed to verify uploaded data")
+            # Upload to Firebase
+            console.print(f"[dim]Uploading {data_type} to Firebase...[/dim]")
+            config["ref"].set(local_data)
 
-        # Compare word counts
-        local_count = len(vocab_data)
-        uploaded_count = len(uploaded_data)
+            # Verify upload
+            uploaded_data = config["ref"].get()
+            if not uploaded_data:
+                raise Exception(f"Failed to verify uploaded {data_type} data")
 
-        if local_count != uploaded_count:
-            console.print(
-                f"[yellow]Warning: Word count mismatch. Local: {local_count}, Firebase: {uploaded_count}[/yellow]"
-            )
-            console.print("[yellow]Please verify your data and try again if needed.[/yellow]")
-        else:
-            console.print(f"[green]✓ Successfully synced {local_count} words to Firebase![/green]")
-            console.print("[dim]Your vocabulary is now backed up in the cloud.[/dim]")
+            # Compare counts
+            local_count = len(local_data)
+            uploaded_count = len(uploaded_data)
+
+            if local_count != uploaded_count:
+                console.print(
+                    f"[yellow]Warning: {data_type} count mismatch. Local: {local_count}, Firebase: {uploaded_count}[/yellow]"
+                )
+                console.print("[yellow]Please verify your data and try again if needed.[/yellow]")
+            else:
+                console.print(
+                    f"[green]✓ Successfully synced {local_count} {data_type} entries to Firebase![/green]"
+                )
+                console.print(f"[dim]Your {data_type} is now backed up in the cloud.[/dim]")
 
     except Exception as e:
         console.print(f"[red]Error during Firebase sync: {str(e)}[/red]")
