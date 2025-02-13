@@ -169,6 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# scans of the notebook
 scans
 
 # Pycharm
@@ -184,14 +186,16 @@ scans
 firebase-credentials.json
 
 # Local development
-.vscode/
-.idea/
-
-# Progress file (now using Firebase)
-progress.json
+.vscode
 
 # Ignore all files in data directory
 vocabulary_learning/data/*
 
 # But keep the directory and .gitkeep
 !vocabulary_learning/data/.gitkeep
+
+# Stuff from other branches
+frontend
+
+# macos
+.DS_Store
