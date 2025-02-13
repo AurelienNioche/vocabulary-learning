@@ -80,10 +80,15 @@ class ProgressService:
                 self.console.print(f"[yellow]Failed to save to Firebase: {str(e)}[/yellow]")
                 self.console.print("[yellow]Progress saved to local file only.[/yellow]")
 
-    def update_progress(self, word: str, success: bool):
-        """Update progress for a given word."""
-        if word not in self.progress:
-            self.progress[word] = {
+    def update_progress(self, word_id: str, success: bool):
+        """Update progress for a given word.
+
+        Args:
+            word_id: The word ID (e.g., 'word_000001')
+            success: Whether the attempt was successful
+        """
+        if word_id not in self.progress:
+            self.progress[word_id] = {
                 "attempts": 0,
                 "successes": 0,
                 "last_seen": datetime.now().isoformat(),
@@ -92,62 +97,83 @@ class ProgressService:
                 "easiness_factor": 2.5,
                 "interval": 0,
             }
-        elif "interval" not in self.progress[word]:
+        elif "interval" not in self.progress[word_id]:
             # Add interval if missing in existing progress data
-            self.progress[word]["interval"] = 0
-            self.progress[word]["easiness_factor"] = self.progress[word].get("easiness_factor", 2.5)
-            self.progress[word]["last_attempt_was_failure"] = self.progress[word].get(
+            self.progress[word_id]["interval"] = 0
+            self.progress[word_id]["easiness_factor"] = self.progress[word_id].get(
+                "easiness_factor", 2.5
+            )
+            self.progress[word_id]["last_attempt_was_failure"] = self.progress[word_id].get(
                 "last_attempt_was_failure", False
             )
 
         # Calculate and store interval since last review
-        last_seen = datetime.fromisoformat(self.progress[word]["last_seen"])
+        last_seen = datetime.fromisoformat(self.progress[word_id]["last_seen"])
         hours_since_last = (datetime.now() - last_seen).total_seconds() / 3600.0
-        self.progress[word]["review_intervals"].append(hours_since_last)
+        self.progress[word_id]["review_intervals"].append(hours_since_last)
 
         # Keep only last 10 intervals
-        if len(self.progress[word]["review_intervals"]) > 10:
-            self.progress[word]["review_intervals"] = self.progress[word]["review_intervals"][-10:]
+        if len(self.progress[word_id]["review_intervals"]) > 10:
+            self.progress[word_id]["review_intervals"] = self.progress[word_id]["review_intervals"][
+                -10:
+            ]
 
-        self.progress[word]["attempts"] += 1
+        self.progress[word_id]["attempts"] += 1
         if success:
-            self.progress[word]["successes"] += 1
+            self.progress[word_id]["successes"] += 1
             # Update SuperMemo 2 parameters
-            if self.progress[word]["interval"] == 0:
-                self.progress[word]["interval"] = 0.0833  # First success: wait 5 minutes
-            elif self.progress[word]["interval"] == 0.0833:
-                self.progress[word]["interval"] = 24  # Second success: wait 1 day
+            if self.progress[word_id]["interval"] == 0:
+                self.progress[word_id]["interval"] = 0.0333  # First success: wait 2 minutes
+            elif self.progress[word_id]["interval"] == 0.0333:
+                self.progress[word_id]["interval"] = 24  # Second success: wait 1 day
             else:
                 # Calculate new interval using easiness factor
-                self.progress[word]["interval"] *= self.progress[word]["easiness_factor"]
+                self.progress[word_id]["interval"] *= self.progress[word_id]["easiness_factor"]
 
             # Update easiness factor (increase for correct answers)
-            self.progress[word]["easiness_factor"] = max(
-                1.3, self.progress[word]["easiness_factor"] + 0.1
+            self.progress[word_id]["easiness_factor"] = max(
+                1.3, self.progress[word_id]["easiness_factor"] + 0.1
             )
-            self.progress[word]["last_attempt_was_failure"] = False
+            self.progress[word_id]["last_attempt_was_failure"] = False
         else:
             # Decrease interval and easiness factor for incorrect answers
-            self.progress[word]["interval"] = max(0.0833, self.progress[word]["interval"] * 0.5)
-            self.progress[word]["easiness_factor"] = max(
-                1.3, self.progress[word]["easiness_factor"] - 0.2
+            self.progress[word_id]["interval"] = max(
+                0.0333, self.progress[word_id]["interval"] * 0.5
             )
-            self.progress[word]["last_attempt_was_failure"] = True
+            self.progress[word_id]["easiness_factor"] = max(
+                1.3, self.progress[word_id]["easiness_factor"] - 0.2
+            )
+            self.progress[word_id]["last_attempt_was_failure"] = True
 
-        self.progress[word]["last_seen"] = datetime.now().isoformat()
+        self.progress[word_id]["last_seen"] = datetime.now().isoformat()
         self.save_progress()
 
-    def get_word_priority(self, word: str, active_words_count: Optional[int] = None) -> float:
-        """Calculate priority score for a word."""
+    def get_word_priority(self, word_id: str, active_words_count: Optional[int] = None) -> float:
+        """Calculate priority score for a word.
+
+        Args:
+            word_id: The word ID (e.g., 'word_000001')
+            active_words_count: Number of active learning words (optional)
+
+        Returns:
+            Priority score between 0.0 and 1.0
+        """
         if active_words_count is None:
             active_words_count = self.count_active_words()
 
-        word_data = self.progress.get(word)
+        word_data = self.progress.get(word_id)
         return calculate_priority(word_data, active_words_count)
 
-    def get_word_progress(self, word: str) -> Optional[Dict]:
-        """Get progress data for a specific word."""
-        return self.progress.get(word)
+    def get_word_progress(self, word_id: str) -> Optional[Dict]:
+        """Get progress data for a specific word.
+
+        Args:
+            word_id: The word ID (e.g., 'word_000001')
+
+        Returns:
+            Progress data dictionary or None if not found
+        """
+        return self.progress.get(word_id)
 
     def count_active_words(self) -> int:
         """Count how many words are being actively learned."""

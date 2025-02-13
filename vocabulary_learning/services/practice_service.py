@@ -79,20 +79,20 @@ class PracticeService:
         random.shuffle(selected_words)
         return selected_words
 
-    def get_word_details(self, word: str) -> Optional[Dict]:
+    def get_word_details(self, word_id: str) -> Optional[Dict]:
         """Get combined vocabulary and progress details for a word.
 
         Args:
-            word: Word to get details for
+            word_id: The word ID (e.g., 'word_000001')
 
         Returns:
             Dictionary with word details and progress
         """
-        vocab_entry = self.vocabulary_service.get_word(word)
+        vocab_entry = self.vocabulary_service.get_word(word_id)
         if not vocab_entry:
             return None
 
-        progress_entry = self.progress_service.get_word_progress(word)
+        progress_entry = self.progress_service.get_word_progress(word_id)
         if progress_entry:
             vocab_entry["progress"] = progress_entry
         else:
@@ -108,14 +108,14 @@ class PracticeService:
 
         return vocab_entry
 
-    def update_word_progress(self, word: str, success: bool):
+    def update_word_progress(self, word_id: str, success: bool):
         """Update progress for a practiced word.
 
         Args:
-            word: Word that was practiced
+            word_id: The word ID (e.g., 'word_000001')
             success: Whether the practice attempt was successful
         """
-        self.progress_service.update_progress(word, success)
+        self.progress_service.update_progress(word_id, success)
 
     def get_practice_stats(self) -> Dict:
         """Get overall practice statistics.

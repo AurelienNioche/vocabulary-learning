@@ -6,6 +6,8 @@ from datetime import datetime
 
 from rich.prompt import Confirm
 
+from vocabulary_learning.core.file_operations import save_vocabulary
+
 
 def add_vocabulary(vocab_file, vocabulary, vocab_ref, console, load_vocabulary_fn):
     """Add new vocabulary interactively."""
@@ -44,49 +46,18 @@ def add_vocabulary(vocab_file, vocabulary, vocab_ref, console, load_vocabulary_f
             continue
 
         try:
-            # Get the next word ID
-            next_id = 1
-            if os.path.exists(vocab_file):
-                with open(vocab_file, "r", encoding="utf-8") as f:
-                    vocab_data = json.load(f)
-                    if vocab_data:
-                        next_id = (
-                            max(int(word_id.split("_")[1]) for word_id in vocab_data.keys()) + 1
-                        )
-            else:
-                vocab_data = {}
-
-            # Create new word entry
+            # Add new word to vocabulary DataFrame
             new_word = {
-                f"word_{str(next_id).zfill(6)}": {
-                    "hiragana": japanese,
-                    "kanji": kanji if kanji else "",
-                    "french": french,
-                    "example_sentence": example if example else "",
-                }
+                "japanese": japanese,
+                "kanji": kanji if kanji else "",
+                "french": french,
+                "example_sentence": example if example else "",
             }
+            vocabulary.loc[len(vocabulary)] = new_word
 
-            # Update vocabulary data
-            vocab_data.update(new_word)
-
-            # Save to JSON file
-            with open(vocab_file, "w", encoding="utf-8") as f:
-                json.dump(vocab_data, f, ensure_ascii=False, indent=2)
-
-            # Update DataFrame
-            load_vocabulary_fn()
-
-            # Sync to Firebase if available
-            if vocab_ref is not None:
-                try:
-                    vocab_ref.set(vocab_data)
-                    console.print("[green]✓ Word added and synced to Firebase![/green]")
-                except Exception as e:
-                    console.print(
-                        f"[yellow]Word added locally but failed to sync to Firebase: {str(e)}[/yellow]"
-                    )
-            else:
-                console.print("[green]✓ Word added successfully![/green]")
+            # Save updated vocabulary
+            save_vocabulary(vocabulary, vocab_file, vocab_ref, console)
+            console.print("[green]✓ Word added successfully![/green]")
 
         except Exception as e:
             console.print(f"[red]Error adding word: {str(e)}[/red]")

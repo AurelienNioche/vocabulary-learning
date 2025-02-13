@@ -18,11 +18,12 @@ def show_progress(vocabulary, progress, console):
     table.add_column("Attempts", justify="right")
     table.add_column("Last Practice", justify="right")
 
-    for _, row in vocabulary.iterrows():
+    for i, row in vocabulary.iterrows():
+        word_id = f"word_{str(i+1).zfill(6)}"
         japanese = row["japanese"]
         kanji = row["kanji"] if pd.notna(row["kanji"]) else ""
         french = row["french"]
-        stats = progress.get(japanese, {"attempts": 0, "successes": 0, "last_seen": "Never"})
+        stats = progress.get(word_id, {"attempts": 0, "successes": 0, "last_seen": "Never"})
 
         attempts = stats["attempts"]
         success_rate = (stats["successes"] / attempts * 100) if attempts > 0 else 0
@@ -58,12 +59,15 @@ def show_progress(vocabulary, progress, console):
 
 def show_word_statistics(word_pair, progress, console):
     """Display statistics for a specific word."""
+    # Get word ID from the word pair
+    word_id = f"word_{str(word_pair.name + 1).zfill(6)}"
+
     table = Table(title=f"Statistics for {word_pair['japanese']}")
     table.add_column("Information", style="bold")
     table.add_column("Value", style="green")
 
     stats = progress.get(
-        word_pair["japanese"],
+        word_id,
         {"attempts": 0, "successes": 0, "last_seen": "Never", "review_intervals": []},
     )
 

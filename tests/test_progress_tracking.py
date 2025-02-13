@@ -23,46 +23,46 @@ class TestProgressTracking(unittest.TestCase):
 
     def test_new_word_initialization(self):
         """Test initializing progress for a new word."""
-        update_progress("新しい", False, self.progress, self.save_callback)
+        update_progress("word_000001", False, self.progress, self.save_callback)
 
-        self.assertIn("新しい", self.progress)
-        word_data = self.progress["新しい"]
+        self.assertIn("word_000001", self.progress)
+        word_data = self.progress["word_000001"]
         self.assertEqual(word_data["attempts"], 1)
         self.assertEqual(word_data["successes"], 0)
-        self.assertEqual(word_data["interval"], 0.0833)  # Failed attempt sets to minimum 5 minutes
+        self.assertEqual(word_data["interval"], 0.0333)  # Failed attempt sets to minimum 2 minutes
         self.assertTrue(word_data["last_attempt_was_failure"])
         self.assertTrue(self.save_called)
 
     def test_interval_progression(self):
         """Test interval progression for successful attempts."""
-        word = "テスト"
+        word_id = "word_000002"
 
         # First attempt (success)
-        update_progress(word, True, self.progress, self.save_callback)
-        self.assertEqual(self.progress[word]["interval"], 0.0833)  # First success: 5 minutes
+        update_progress(word_id, True, self.progress, self.save_callback)
+        self.assertEqual(self.progress[word_id]["interval"], 0.0333)  # First success: 2 minutes
 
         # Second attempt (success)
-        update_progress(word, True, self.progress, self.save_callback)
-        self.assertEqual(self.progress[word]["interval"], 24)  # Second success: 1 day
+        update_progress(word_id, True, self.progress, self.save_callback)
+        self.assertEqual(self.progress[word_id]["interval"], 24)  # Second success: 1 day
 
         # Third attempt (success) - should use easiness factor
-        initial_interval = self.progress[word]["interval"]
-        easiness = self.progress[word]["easiness_factor"]
-        update_progress(word, True, self.progress, self.save_callback)
-        self.assertEqual(self.progress[word]["interval"], initial_interval * easiness)
+        initial_interval = self.progress[word_id]["interval"]
+        easiness = self.progress[word_id]["easiness_factor"]
+        update_progress(word_id, True, self.progress, self.save_callback)
+        self.assertEqual(self.progress[word_id]["interval"], initial_interval * easiness)
 
     def test_failed_attempt(self):
         """Test interval reduction on failed attempt."""
-        word = "失敗"
+        word_id = "word_000003"
 
         # First success to set initial interval
-        update_progress(word, True, self.progress, self.save_callback)
-        initial_interval = self.progress[word]["interval"]
+        update_progress(word_id, True, self.progress, self.save_callback)
+        initial_interval = self.progress[word_id]["interval"]
 
         # Failed attempt
-        update_progress(word, False, self.progress, self.save_callback)
-        self.assertEqual(self.progress[word]["interval"], max(0.0833, initial_interval * 0.5))
-        self.assertTrue(self.progress[word]["last_attempt_was_failure"])
+        update_progress(word_id, False, self.progress, self.save_callback)
+        self.assertEqual(self.progress[word_id]["interval"], max(0.0333, initial_interval * 0.5))
+        self.assertTrue(self.progress[word_id]["last_attempt_was_failure"])
 
     def test_calculate_priority_new_word(self):
         """Test priority calculation for new words."""
@@ -95,10 +95,10 @@ class TestProgressTracking(unittest.TestCase):
     def test_count_active_learning_words(self):
         """Test counting active learning words."""
         progress = {
-            "word1": {"attempts": 10, "successes": 9},  # 90% - mastered
-            "word2": {"attempts": 10, "successes": 7},  # 70% - active
-            "word3": {"attempts": 5, "successes": 2},  # 40% - active
-            "word4": {"attempts": 0, "successes": 0},  # new word - not active
+            "word_000001": {"attempts": 10, "successes": 9},  # 90% - mastered
+            "word_000002": {"attempts": 10, "successes": 7},  # 70% - active
+            "word_000003": {"attempts": 5, "successes": 2},  # 40% - active
+            "word_000004": {"attempts": 0, "successes": 0},  # new word - not active
         }
 
         active_count = count_active_learning_words(progress)
@@ -106,41 +106,41 @@ class TestProgressTracking(unittest.TestCase):
 
     def test_review_intervals_tracking(self):
         """Test tracking of review intervals."""
-        word = "間隔"
+        word_id = "word_000004"
 
         # First attempt
-        update_progress(word, True, self.progress, self.save_callback)
-        self.assertEqual(len(self.progress[word]["review_intervals"]), 1)
+        update_progress(word_id, True, self.progress, self.save_callback)
+        self.assertEqual(len(self.progress[word_id]["review_intervals"]), 1)
 
         # Simulate time passing
-        self.progress[word]["last_seen"] = (datetime.now() - timedelta(hours=2)).isoformat()
+        self.progress[word_id]["last_seen"] = (datetime.now() - timedelta(hours=2)).isoformat()
 
         # Second attempt
-        update_progress(word, True, self.progress, self.save_callback)
-        self.assertEqual(len(self.progress[word]["review_intervals"]), 2)
-        self.assertAlmostEqual(self.progress[word]["review_intervals"][-1], 2, delta=0.1)
+        update_progress(word_id, True, self.progress, self.save_callback)
+        self.assertEqual(len(self.progress[word_id]["review_intervals"]), 2)
+        self.assertAlmostEqual(self.progress[word_id]["review_intervals"][-1], 2, delta=0.1)
 
     def test_easiness_factor_adjustment(self):
         """Test adjustment of easiness factor."""
-        word = "簡単"
+        word_id = "word_000005"
 
         # Initial easiness factor
-        update_progress(word, True, self.progress, self.save_callback)
-        initial_ef = self.progress[word]["easiness_factor"]
+        update_progress(word_id, True, self.progress, self.save_callback)
+        initial_ef = self.progress[word_id]["easiness_factor"]
 
         # Success increases EF
-        update_progress(word, True, self.progress, self.save_callback)
-        self.assertGreater(self.progress[word]["easiness_factor"], initial_ef)
+        update_progress(word_id, True, self.progress, self.save_callback)
+        self.assertGreater(self.progress[word_id]["easiness_factor"], initial_ef)
 
         # Failure decreases EF
-        ef_before_failure = self.progress[word]["easiness_factor"]
-        update_progress(word, False, self.progress, self.save_callback)
-        self.assertLess(self.progress[word]["easiness_factor"], ef_before_failure)
+        ef_before_failure = self.progress[word_id]["easiness_factor"]
+        update_progress(word_id, False, self.progress, self.save_callback)
+        self.assertLess(self.progress[word_id]["easiness_factor"], ef_before_failure)
 
         # EF should not go below 1.3
         for _ in range(5):  # Multiple failures
-            update_progress(word, False, self.progress, self.save_callback)
-        self.assertGreaterEqual(self.progress[word]["easiness_factor"], 1.3)
+            update_progress(word_id, False, self.progress, self.save_callback)
+        self.assertGreaterEqual(self.progress[word_id]["easiness_factor"], 1.3)
 
 
 if __name__ == "__main__":

@@ -112,7 +112,8 @@ class VocabularyLearner:
 
 def main():
     console = Console()
-    console.print("\n[bold blue]=== Japanese Vocabulary Learning Tool ===[/bold blue]")
+    console.print("[bold green]Hello![/bold green]")
+    console.print("[bold blue]=== Japanese Vocabulary Learning Tool ===[/bold blue]")
 
     learner = VocabularyLearner()
 
