@@ -13,6 +13,8 @@ A command-line tool for learning Japanese vocabulary with spaced repetition and 
 - Japanese text support (hiragana, katakana, kanji)
 - Advanced spaced repetition system (based on SuperMemo 2)
 - Progress tracking and statistics
+- Smart word selection algorithm
+- Word mastery tracking
 
 ### Cloud Integration
 - Firebase integration for data backup
@@ -26,12 +28,13 @@ A command-line tool for learning Japanese vocabulary with spaced repetition and 
 - Example sentences for context
 - Detailed statistics for each word
 - Progress tracking with success rates
+- Word mastery criteria
 
 ### Spaced Repetition Algorithm
 The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learning:
 
 1. **Initial Learning**:
-   - First success: 5-minute interval
+   - First success: 2-minute interval
    - Second success: 24-hour interval
    - Subsequent intervals: Calculated using easiness factor
 
@@ -41,13 +44,22 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
    - Successful reviews: Increase factor by 0.1
    - Failed reviews: Decrease factor by 0.2 (minimum 1.3)
 
-3. **Review Priority**:
-   - Based on success rate, time since last review, and review intervals
-   - Prioritizes words with:
-     - Lower success rates
-     - Overdue reviews
-     - Recent failures
-   - Limits active learning to 8 words at a time
+3. **Word Selection Priority**:
+   - Based on multiple factors:
+     - Time since last review relative to scheduled interval
+     - Success rate (lower rates get higher priority)
+     - Number of attempts (newer words get higher priority)
+     - Last attempt result (failed words get 20% higher priority)
+   - Words not due for review are skipped
+   - New words get high but not maximum priority
+   - Priority is scaled based on active word count
+
+4. **Word Mastery Criteria**:
+   - A word is considered mastered when:
+     - It has at least 5 successful reviews
+     - It maintains a success rate of 90% or higher
+   - Mastered words are excluded from regular review
+   - System focuses on words still being learned
 
 ### Vim-like Commands
 - `:h` - Show help
@@ -120,6 +132,7 @@ Your progress is:
   - Review intervals
   - Last practice time
   - Easiness factor
+  - Mastery status
 
 ## Development
 
@@ -135,6 +148,7 @@ Your progress is:
 - Check example sentences with `:e` to learn context
 - Review your statistics with `:s` to track progress
 - Let the spaced repetition system guide your learning pace
+- Focus on mastering a small set of words before adding more
 
 ## License
 

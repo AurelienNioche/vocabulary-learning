@@ -4,6 +4,7 @@ import random
 from datetime import datetime
 
 import pandas as pd
+from rich.console import Console
 from rich.prompt import Confirm
 
 from vocabulary_learning.core.progress_tracking import (
@@ -33,11 +34,37 @@ def practice_mode(
     """Practice mode for vocabulary learning."""
     if len(vocabulary) == 0:
         console.print(
-            "[yellow]No vocabulary words available. Please add some words to the vocabulary.[/yellow]"
+            "[yellow]No vocabulary words found. Please add some words to the vocabulary.[/yellow]"
         )
         return
 
     console.print("\n[bold]Practice Mode[/bold]\n")
+
+    # Verify progress data
+    mastered_count = 0
+    active_count = 0
+    for word_data in progress.values():
+        attempts = word_data.get("attempts", 0)
+        successes = word_data.get("successes", 0)
+        if attempts > 0:
+            success_rate = successes / attempts
+            if success_rate >= 0.9 and successes >= 5:
+                mastered_count += 1
+            else:
+                active_count += 1
+
+    # Print initial statistics
+    console.print(f"[dim]Total number of words: {len(vocabulary)}[/dim]")
+    console.print(f"[dim]Number of words in progress: {len(progress)}[/dim]")
+    console.print(f"[dim]Active learning words count: {active_count}[/dim]")
+    console.print(f"[dim]Mastered words count: {mastered_count}[/dim]")
+    console.print(
+        f"[dim]Vocabulary data verification: {all(isinstance(row['japanese'], str) and isinstance(row['french'], str) for _, row in vocabulary.iterrows())}[/dim]"
+    )
+    console.print(
+        f"[dim]Progress data verification: {all(isinstance(p, dict) for p in progress.values())}[/dim]\n"
+    )
+
     console.print("[dim]Available commands:[/dim]")
     console.print(
         "[blue]:h[/blue] help • [blue]:m[/blue] menu • [blue]:q[/blue] quit • [blue]:s[/blue] show progress • [blue]:d[/blue] don't know • [blue]:e[/blue] show example"
@@ -49,7 +76,11 @@ def practice_mode(
         # Select a word to practice
         word_pair = select_word(vocabulary, progress)
         if word_pair is None:
-            console.print("[yellow]No vocabulary words available.[/yellow]")
+            active_count = count_active_learning_words(progress)
+            console.print(
+                f"[yellow]You currently have {active_count} active words.[/yellow]\n"
+                "[yellow]No words are ready for review right now. Try again later![/yellow]"
+            )
             break
 
         # Display the word
@@ -151,46 +182,63 @@ def select_word(vocabulary, progress):
     # Count active learning words
     active_words_count = count_active_learning_words(progress)
 
-    # If we've reached the active words limit, only select from existing words
-    if active_words_count >= 8:
-        # Calculate priorities only for words in progress
-        word_priorities = []
-        for _, row in vocabulary.iterrows():
-            japanese_word = row["japanese"]
-            if japanese_word in progress:
-                word_data = progress[japanese_word]
-                priority = calculate_priority(word_data, active_words_count)
-                if priority > 0:  # Only include words that need review
-                    word_priorities.append((japanese_word, priority))
+    # Calculate priorities for all words in progress
+    word_priorities = []
+    for _, row in vocabulary.iterrows():
+        japanese_word = row["japanese"]
+        if japanese_word in progress:
+            word_data = progress[japanese_word]
+            # Skip mastered words
+            attempts = word_data.get("attempts", 0)
+            successes = word_data.get("successes", 0)
+            if attempts > 0:
+                success_rate = successes / attempts
+                if success_rate >= 0.9 and successes >= 5:
+                    continue
 
-        # Sort by priority and add some randomness
-        if word_priorities:
-            word_priorities.sort(key=lambda x: x[1] + random.random() * 0.1, reverse=True)
-            selected_word = word_priorities[0][0]
-            return vocabulary[vocabulary["japanese"] == selected_word].iloc[0]
-        return None
-    else:
-        # First, look for words that haven't been practiced yet
-        new_words = vocabulary[~vocabulary["japanese"].isin(progress.keys())]
-        if not new_words.empty:
-            # Return the first new word (maintaining order)
-            return new_words.iloc[0]
-
-        # If all words have been practiced at least once, use the priority system
-        word_priorities = []
-        for _, row in vocabulary.iterrows():
-            japanese_word = row["japanese"]
-            word_data = progress.get(japanese_word)
             priority = calculate_priority(word_data, active_words_count)
-            if priority > 0:  # Only include words that need review
+            if priority > 0:  # Only add words that are ready for review
                 word_priorities.append((japanese_word, priority))
 
-        # Sort by priority and add some randomness
-        if word_priorities:
-            word_priorities.sort(key=lambda x: x[1] + random.random() * 0.1, reverse=True)
-            selected_word = word_priorities[0][0]
-            return vocabulary[vocabulary["japanese"] == selected_word].iloc[0]
-        return None
+    # If we have words in progress that need review, prioritize them
+    if word_priorities:
+        word_priorities.sort(key=lambda x: x[1] + random.random() * 0.1, reverse=True)
+        selected_word = word_priorities[0][0]
+        selected_priority = word_priorities[0][1]
+        selected = vocabulary[vocabulary["japanese"] == selected_word].iloc[0]
+        word_data = progress[selected_word]
+
+        # Calculate success rate
+        attempts = word_data.get("attempts", 0)
+        successes = word_data.get("successes", 0)
+        success_rate = (successes / attempts * 100) if attempts > 0 else 0
+
+        console = Console()
+        console.print(f"\n[dim]Selecting word {selected_word}[/dim]")
+        console.print(f"[dim]- priority: {selected_priority:.4f}[/dim]")
+        console.print(f"[dim]- success rate: {success_rate:.1f}% ({successes}/{attempts})[/dim]")
+        console.print(f"[dim]- easiness factor: {word_data.get('easiness_factor', 2.5):.2f}[/dim]")
+        console.print(f"[dim]- current interval: {word_data.get('interval', 0):.2f} hours[/dim]")
+        console.print(
+            f"[dim]- last attempt was a success: {not word_data.get('last_attempt_was_failure', False)}[/dim]"
+        )
+        return selected
+
+    # If no words are ready for review, look for new words
+    new_words = vocabulary[~vocabulary["japanese"].isin(progress.keys())]
+    if not new_words.empty:
+        # Return the first new word (maintaining order)
+        selected = new_words.iloc[0]
+        console = Console()
+        console.print(f"\n[dim]Selecting word {selected['japanese']}[/dim]")
+        console.print("[dim]- priority: 0.8000 (new word)[/dim]")
+        console.print("[dim]- success rate: 0.0% (0/0)[/dim]")
+        console.print("[dim]- easiness factor: 2.50 (initial)[/dim]")
+        console.print("[dim]- current interval: 0.00 hours[/dim]")
+        console.print("[dim]- last attempt was a success: True[/dim]")
+        return selected
+
+    return None
 
 
 def check_answer(user_answer, correct_answer):

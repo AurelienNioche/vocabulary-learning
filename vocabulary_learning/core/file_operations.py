@@ -9,14 +9,47 @@ import pandas as pd
 
 
 def load_vocabulary(vocab_file, vocab_ref, console):
-    """Load vocabulary from JSON file."""
+    """Load vocabulary from Firebase or local JSON file."""
+    # First try to load from Firebase if available
+    if vocab_ref is not None:
+        try:
+            console.print("[dim]Attempting to load vocabulary from Firebase...[/dim]")
+            vocab_data = vocab_ref.get()
+            if vocab_data:
+                # Convert Firebase data to DataFrame
+                vocab_list = []
+                for word_id, word_data in vocab_data.items():
+                    vocab_list.append(
+                        {
+                            "japanese": word_data["hiragana"],
+                            "kanji": word_data["kanji"],
+                            "french": word_data["french"],
+                            "example_sentence": word_data["example_sentence"],
+                        }
+                    )
+
+                vocabulary = pd.DataFrame(vocab_list)
+                # Clean whitespace from entries
+                vocabulary = vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+                # Remove any empty rows
+                vocabulary = vocabulary.dropna(subset=["japanese", "french"])
+                console.print(f"[green]✓ Loaded {len(vocabulary)} words from Firebase[/green]")
+                return vocabulary
+            else:
+                console.print("[yellow]No vocabulary data found in Firebase[/yellow]")
+        except Exception as e:
+            console.print(f"[yellow]Failed to load from Firebase: {str(e)}[/yellow]")
+            console.print("[yellow]Falling back to local file...[/yellow]")
+
+    # Fallback to local file
     try:
+        console.print("[dim]Loading vocabulary from local file...[/dim]")
         with open(vocab_file, "r", encoding="utf-8") as f:
             vocab_data = json.load(f)
 
         if not vocab_data:
             vocabulary = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
-            console.print("[yellow]No vocabulary data found[/yellow]")
+            console.print("[yellow]No vocabulary data found in local file[/yellow]")
             return vocabulary
 
         # Convert JSON data to DataFrame
@@ -36,7 +69,7 @@ def load_vocabulary(vocab_file, vocab_ref, console):
         vocabulary = vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
         # Remove any empty rows
         vocabulary = vocabulary.dropna(subset=["japanese", "french"])
-        console.print(f"[green]✓ Loaded {len(vocabulary)} words[/green]")
+        console.print(f"[green]✓ Loaded {len(vocabulary)} words from local file[/green]")
 
         # Show last progress update time if progress file exists
         progress_file = str(Path(vocab_file).parent / "progress.json")

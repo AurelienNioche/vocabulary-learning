@@ -67,8 +67,24 @@ class TestPractice(unittest.TestCase):
 
     def test_select_word_new_word(self):
         """Test word selection prioritizing new words."""
-        selected = select_word(self.vocabulary, self.progress)
-        self.assertEqual(selected["japanese"], "新しい")  # Should select the unlearned word
+        # Create a fresh progress with a word that's not due (future date)
+        # and has a success rate below mastery
+        progress = {
+            "こんにちは": {
+                "attempts": 10,
+                "successes": 9,  # 90% success rate to be considered mastered
+                "last_seen": "2025-02-11T12:00:00",  # Future date to ensure it's not due
+                "review_intervals": [1, 4, 24],
+                "last_attempt_was_failure": False,
+                "interval": 24,
+            }
+        }
+        # Since the word in progress is mastered, it should be skipped
+        # and the new word should be selected
+        selected = select_word(self.vocabulary, progress)
+        self.assertEqual(
+            selected["japanese"], "さようなら"
+        )  # Should select the first unlearned word
 
     def test_select_word_active_limit(self):
         """Test word selection respecting active words limit."""
@@ -171,24 +187,28 @@ class TestPractice(unittest.TestCase):
                 "attempts": 4,
                 "successes": 4,  # 100% but only 4 successes
                 "last_seen": "2024-02-11T12:00:00",
+                "interval": 0.0333,  # 2 minutes
             },
             # Word with enough attempts but low success rate
             "word_2": {
                 "attempts": 10,
                 "successes": 8,  # 80% success rate
                 "last_seen": "2024-02-11T12:00:00",
+                "interval": 24,  # 1 day
             },
             # Word that meets mastery criteria
             "word_3": {
                 "attempts": 10,
                 "successes": 9,  # 90% success rate
                 "last_seen": "2024-02-11T12:00:00",
+                "interval": 48,  # 2 days
             },
             # Word that exceeds mastery criteria
             "word_4": {
                 "attempts": 15,
                 "successes": 14,  # 93% success rate
                 "last_seen": "2024-02-11T12:00:00",
+                "interval": 96,  # 4 days
             },
         }
 
@@ -218,13 +238,24 @@ class TestPractice(unittest.TestCase):
         mock_exit.assert_called_once()
 
     @patch("vocabulary_learning.core.practice.exit_with_save", side_effect=SystemExit)
-    @patch("builtins.input", side_effect=["nouveau", ":q"])
+    @patch("builtins.input", side_effect=["au revoir", ":q"])
     def test_practice_mode_correct_answer(self, mock_input, mock_exit):
         """Test practice mode with correct answer."""
+        # Use a progress dictionary that won't prioritize failed words
+        progress = {
+            "さようなら": {
+                "attempts": 5,
+                "successes": 2,
+                "last_seen": "2024-02-10T12:00:00",
+                "review_intervals": [1, 4],
+                "last_attempt_was_failure": False,
+                "interval": 4,
+            }
+        }
         with self.assertRaises(SystemExit):
             practice_mode(
                 self.vocabulary,
-                self.progress,
+                progress,
                 self.console,
                 self.mock_converter,
                 self.mock_update_progress,

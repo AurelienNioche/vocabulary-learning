@@ -39,8 +39,8 @@ def update_progress(word, success, progress, save_callback):
         progress[word]["successes"] += 1
         # Update SuperMemo 2 parameters
         if progress[word]["interval"] == 0:
-            progress[word]["interval"] = 0.0833  # First success: wait 5 minutes
-        elif progress[word]["interval"] == 0.0833:
+            progress[word]["interval"] = 0.0333  # First success: wait 2 minutes
+        elif progress[word]["interval"] == 0.0333:
             progress[word]["interval"] = 24  # Second success: wait 1 day
         else:
             # Calculate new interval using easiness factor
@@ -51,8 +51,8 @@ def update_progress(word, success, progress, save_callback):
     else:
         # Decrease interval and easiness factor for incorrect answers
         progress[word]["interval"] = max(
-            0.0833, progress[word]["interval"] * 0.5
-        )  # Minimum 5 minutes
+            0.0333, progress[word]["interval"] * 0.5
+        )  # Minimum 2 minutes
         progress[word]["easiness_factor"] = max(1.3, progress[word]["easiness_factor"] - 0.2)
         progress[word]["last_attempt_was_failure"] = True
 
@@ -92,12 +92,16 @@ def calculate_priority(word_data: Optional[Dict], active_words_count: int) -> fl
             hours_since = (datetime.now() - last_seen).total_seconds() / 3600.0
             scheduled_interval = word_data.get("interval", 0)
 
+            # If the word was just seen, give it zero priority
+            if hours_since < 0.0333:  # Less than 2 minutes
+                return 0.0
+
             if hours_since >= scheduled_interval:
                 # Word is due or overdue
                 time_factor = min(2.0, 1.0 + (hours_since - scheduled_interval) / 24.0)
             else:
                 # Word is not due yet
-                time_factor = hours_since / scheduled_interval
+                return 0.0  # Don't show words that aren't due yet
         except (ValueError, TypeError):
             time_factor = 1.0
     else:

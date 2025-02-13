@@ -94,13 +94,13 @@ class VocabularyLearner:
 
         # Vim-like commands
         self.vim_commands = {
-            ":q": "quit program",
-            ":m": "return to menu",
-            ":h": "show help",
-            ":s": "show word statistics",
-            ":S": "show all statistics",
-            ":e": "show example",
-            ":d": "show answer (don't know)",
+            ":q ": "quit program",
+            ":m ": "return to menu",
+            ":h ": "show help",
+            ":s ": "show word statistics",
+            ":S ": "show all statistics",
+            ":e ": "show example",
+            ":d ": "show answer (don't know)",
         }
 
         self.last_save_time = datetime.now()
