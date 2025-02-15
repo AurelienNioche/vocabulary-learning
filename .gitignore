@@ -195,3 +195,6 @@ vocabulary_learning/data/*
 
 # But keep the directory and .gitkeep
 !vocabulary_learning/data/.gitkeep
+
+#MacOS
+.DS_Store
