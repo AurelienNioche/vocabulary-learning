@@ -17,33 +17,45 @@ from vocabulary_learning.core.ui_components import (
 class TestUIComponents(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
-        self.console = Console()
+        self.console = Console(force_terminal=True)
 
         # Sample vocabulary data
         self.vocabulary = pd.DataFrame(
             [
-                {"japanese": "こんにちは", "kanji": "今日は", "french": "bonjour"},
-                {"japanese": "さようなら", "kanji": "", "french": "au revoir"},
+                {
+                    "japanese": "こんにちは",
+                    "kanji": "今日は",
+                    "french": "bonjour",
+                    "example_sentence": "こんにちは、元気ですか？",
+                },
+                {
+                    "japanese": "さようなら",
+                    "kanji": "",
+                    "french": "au revoir",
+                    "example_sentence": "",
+                },
             ]
         )
 
         # Sample progress data
         self.progress = {
-            "こんにちは": {
+            "word_000001": {
                 "attempts": 10,
-                "successes": 8,
-                "last_seen": (datetime.now() - timedelta(hours=2)).isoformat(),
-                "review_intervals": [1, 4, 24],
-                "last_attempt_was_failure": False,
+                "successes": 8,  # 80% success rate
                 "interval": 24,
+                "last_attempt_was_failure": False,
+                "last_seen": datetime.now().isoformat(),
+                "review_intervals": [1, 4, 24],
+                "easiness_factor": 2.5,
             },
-            "さようなら": {
+            "word_000002": {
                 "attempts": 5,
-                "successes": 2,
-                "last_seen": (datetime.now() - timedelta(days=2)).isoformat(),
-                "review_intervals": [1, 4],
-                "last_attempt_was_failure": True,
+                "successes": 2,  # 40% success rate
                 "interval": 4,
+                "last_attempt_was_failure": True,
+                "last_seen": datetime.now().isoformat(),
+                "review_intervals": [1, 4],
+                "easiness_factor": 2.3,
             },
         }
 

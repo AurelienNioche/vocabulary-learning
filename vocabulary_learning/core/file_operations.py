@@ -17,18 +17,29 @@ def load_vocabulary(vocab_file, vocab_ref, console):
             vocab_data = vocab_ref.get()
             if vocab_data:
                 # Convert Firebase data to DataFrame
-                vocab_list = []
-                for word_id, word_data in vocab_data.items():
-                    vocab_list.append(
-                        {
-                            "japanese": word_data["hiragana"],
-                            "kanji": word_data["kanji"],
-                            "french": word_data["french"],
-                            "example_sentence": word_data["example_sentence"],
+                if isinstance(vocab_data, list):
+                    # Convert old list format to dictionary
+                    vocab_data = {
+                        f"word_{str(i+1).zfill(6)}": {
+                            "hiragana": word.get("japanese", word.get("hiragana", "")),
+                            "kanji": word.get("kanji", ""),
+                            "french": word.get("french", ""),
+                            "example_sentence": word.get("example_sentence", ""),
                         }
-                    )
-
-                vocabulary = pd.DataFrame(vocab_list)
+                        for i, word in enumerate(vocab_data)
+                    }
+                vocabulary = pd.DataFrame(
+                    [
+                        {
+                            "japanese": word["hiragana"],
+                            "kanji": word["kanji"],
+                            "french": word["french"],
+                            "example_sentence": word["example_sentence"],
+                            "word_id": word_id,
+                        }
+                        for word_id, word in vocab_data.items()
+                    ]
+                )
                 # Clean whitespace from entries
                 vocabulary = vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
                 # Remove any empty rows
@@ -48,23 +59,37 @@ def load_vocabulary(vocab_file, vocab_ref, console):
             vocab_data = json.load(f)
 
         if not vocab_data:
-            vocabulary = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+            vocabulary = pd.DataFrame(
+                columns=["japanese", "kanji", "french", "example_sentence", "word_id"]
+            )
             console.print("[yellow]No vocabulary data found in local file[/yellow]")
             return vocabulary
 
         # Convert JSON data to DataFrame
-        vocab_list = []
-        for word_id, word_data in vocab_data.items():
-            vocab_list.append(
-                {
-                    "japanese": word_data["hiragana"],
-                    "kanji": word_data["kanji"],
-                    "french": word_data["french"],
-                    "example_sentence": word_data["example_sentence"],
+        if isinstance(vocab_data, list):
+            # Convert old list format to dictionary
+            vocab_data = {
+                f"word_{str(i+1).zfill(6)}": {
+                    "hiragana": word.get("japanese", word.get("hiragana", "")),
+                    "kanji": word.get("kanji", ""),
+                    "french": word.get("french", ""),
+                    "example_sentence": word.get("example_sentence", ""),
                 }
-            )
+                for i, word in enumerate(vocab_data)
+            }
 
-        vocabulary = pd.DataFrame(vocab_list)
+        vocabulary = pd.DataFrame(
+            [
+                {
+                    "japanese": word["hiragana"],
+                    "kanji": word["kanji"],
+                    "french": word["french"],
+                    "example_sentence": word["example_sentence"],
+                    "word_id": word_id,
+                }
+                for word_id, word in vocab_data.items()
+            ]
+        )
         # Clean whitespace from entries
         vocabulary = vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
         # Remove any empty rows
@@ -90,13 +115,13 @@ def load_vocabulary(vocab_file, vocab_ref, console):
 
     except FileNotFoundError:
         console.print("[yellow]No vocabulary file found[/yellow]")
-        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence", "word_id"])
     except json.JSONDecodeError:
         console.print("[red]Error: Invalid JSON format in vocabulary file[/red]")
-        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence", "word_id"])
     except Exception as e:
         console.print(f"[red]Error loading vocabulary: {str(e)}[/red]")
-        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence", "word_id"])
 
 
 def load_progress(progress_file, progress_ref, console):

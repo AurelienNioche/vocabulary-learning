@@ -60,7 +60,15 @@ def show_progress(vocabulary, progress, console):
 def show_word_statistics(word_pair, progress, console):
     """Display statistics for a specific word."""
     # Get word ID from the word pair
-    word_id = f"word_{str(word_pair.name + 1).zfill(6)}"
+    word_id = None
+    if hasattr(word_pair, "name") and word_pair.name is not None:
+        word_id = f"word_{str(word_pair.name + 1).zfill(6)}"
+    else:
+        # For words without an index, try to find them in the progress data
+        for progress_id, progress_data in progress.items():
+            if progress_data.get("japanese") == word_pair["japanese"]:
+                word_id = progress_id
+                break
 
     table = Table(title=f"Statistics for {word_pair['japanese']}")
     table.add_column("Information", style="bold")

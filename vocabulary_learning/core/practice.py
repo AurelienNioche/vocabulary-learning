@@ -3,6 +3,7 @@
 import os
 import random
 from datetime import datetime
+from typing import Dict
 
 import pandas as pd
 import pytz
@@ -13,6 +14,7 @@ from rich.prompt import Confirm
 from vocabulary_learning.core.progress_tracking import (
     calculate_priority,
     count_active_learning_words,
+    is_mastered,
 )
 from vocabulary_learning.core.utils import (
     exit_with_save,
@@ -105,7 +107,7 @@ def practice_mode(
 
     while True:
         # Select a word to practice
-        word_pair = select_word(vocabulary, progress)
+        word_pair = select_word(vocabulary, progress, console)
         if word_pair is None:
             active_count = count_active_learning_words(progress)
             console.print(
@@ -295,89 +297,107 @@ def practice_mode(
         console.print("\n[dim]• ─────────────────────── •[/dim]")  # Add decorative separator
 
 
-def select_word(vocabulary, progress):
-    """Select the next word to practice based on priority and active word limit.
+def verify_data(vocabulary: pd.DataFrame, progress: Dict) -> None:
+    """Verify the integrity of vocabulary and progress data.
 
     Args:
-        vocabulary: DataFrame containing vocabulary words
-        progress: Dictionary containing progress data for each word
+        vocabulary: DataFrame containing vocabulary
+        progress: Dictionary containing progress data
+    """
+    # Verify vocabulary has required columns
+    required_columns = ["japanese", "kanji", "french", "example_sentence"]
+    for column in required_columns:
+        if column not in vocabulary.columns:
+            raise ValueError(f"Missing required column: {column}")
+
+    # Verify progress data structure
+    for word_id, word_data in progress.items():
+        required_fields = [
+            "attempts",
+            "successes",
+            "interval",
+            "last_attempt_was_failure",
+            "last_seen",
+            "review_intervals",
+            "easiness_factor",
+        ]
+        for field in required_fields:
+            if field not in word_data:
+                raise ValueError(f"Missing required field {field} in progress data for {word_id}")
+
+
+def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> pd.Series:
+    """Select a word for practice based on priority.
+
+    Args:
+        vocabulary: DataFrame containing vocabulary
+        progress: Dictionary containing progress data
+        console: Rich console for output
 
     Returns:
-        Selected word as a DataFrame row, or None if no word is available
+        Selected word as a pandas Series
     """
-    if len(vocabulary) == 0:
-        return None
+    # Verify data integrity
+    verify_data(vocabulary, progress)
 
     # Count active learning words
     active_words_count = count_active_learning_words(progress)
 
-    # Calculate priorities for all words in progress
-    word_priorities = []
-    for i, row in vocabulary.iterrows():
-        word_id = f"word_{str(i+1).zfill(6)}"
-        if word_id in progress:
-            word_data = progress[word_id]
-            # Skip mastered words
-            attempts = word_data.get("attempts", 0)
-            successes = word_data.get("successes", 0)
-            if attempts > 0:
-                success_rate = successes / attempts
-                if success_rate >= 0.9 and successes >= 5:
-                    continue
-
-            priority = calculate_priority(word_data, active_words_count)
-            if priority > 0:  # Only add words that are ready for review
-                word_priorities.append((word_id, priority))
-
-    # If we have words in progress that need review, prioritize them
-    if word_priorities:
-        word_priorities.sort(key=lambda x: x[1] + random.random() * 0.1, reverse=True)
-        selected_word_id = word_priorities[0][0]
-        selected_priority = word_priorities[0][1]
-        selected_index = int(selected_word_id.split("_")[1]) - 1
-        selected = vocabulary.iloc[selected_index]
-        word_data = progress[selected_word_id]
-
-        # Calculate success rate and other stats
-        attempts = word_data.get("attempts", 0)
-        successes = word_data.get("successes", 0)
-        success_rate = (successes / attempts * 100) if attempts > 0 else 0
-        easiness_factor = word_data.get("easiness_factor", 2.5)
-        interval = word_data.get("interval", 0)
-        last_attempt_was_failure = word_data.get("last_attempt_was_failure", False)
-
-        # Display stats
-        console = Console()
-        console.print(f"\n[dim]Selecting word {selected['japanese']}[/dim]")
-        console.print(f"[dim]- priority: {selected_priority:.1f}[/dim]")
-        console.print(f"[dim]- success rate: {success_rate:.0f}% ({successes}/{attempts})[/dim]")
-        console.print(f"[dim]- easiness factor: {easiness_factor:.1f}[/dim]")
-        console.print(f"[dim]- optimal interval: {format_time_interval(interval)}[/dim]")
-        console.print(
-            f"[dim]- last attempt was a success: {'N/A' if attempts == 0 else 'yes' if not last_attempt_was_failure else 'no'}[/dim]"
+    # Get new words (not in progress)
+    progress_word_ids = set(progress.keys())
+    new_words = vocabulary[
+        ~vocabulary.index.isin(
+            [i for i in range(len(vocabulary)) if f"word_{str(i+1).zfill(6)}" in progress_word_ids]
         )
-        last_seen = format_datetime(word_data["last_seen"])
-        console.print(f"[dim]- last presented: {last_seen}[/dim]")
-        return selected
+    ]
 
-    # If no words are ready for review and we're under the active limit,
-    # look for new words
-    if active_words_count < 20:  # Maximum active words limit
-        new_words = vocabulary[~vocabulary["japanese"].isin(progress.keys())]
-        if not new_words.empty:
-            # Return the first new word (maintaining order)
-            selected = new_words.iloc[0]
-            console = Console()
-            console.print(f"\n[dim]Selecting word {selected['japanese']}[/dim]")
-            console.print("[dim]- priority: 0.8 (new word)[/dim]")
-            console.print("[dim]- success rate: 0% (0/0)[/dim]")
-            console.print("[dim]- easiness factor: 2.5[/dim]")
-            console.print("[dim]- optimal interval: as soon as possible[/dim]")
-            console.print("[dim]- last attempt was a success: N/A[/dim]")
-            console.print("[dim]- last presented: never[/dim]")
-            return selected
+    # Calculate priorities for words in progress
+    priorities = {}
+    for word_id, word_data in progress.items():
+        if not is_mastered(word_data):
+            priorities[word_id] = calculate_priority(word_data, active_words_count)
 
-    return None
+    # If there are no words in progress or all are mastered,
+    # select a new word if available
+    if not priorities and not new_words.empty:
+        selected_word = new_words.iloc[0]
+        console.print(f"\n[dim]Selecting word {selected_word['japanese']}[/dim]")
+        console.print("[dim]- priority: 0.8 (new word)[/dim]")
+        console.print("[dim]- success rate: 0% (0/0)[/dim]")
+        console.print("[dim]- easiness factor: 2.5[/dim]")
+        console.print("[dim]- optimal interval: as soon as possible[/dim]")
+        console.print("[dim]- last attempt was a success: N/A[/dim]")
+        console.print("[dim]- last presented: never[/dim]")
+        return selected_word
+
+    # If there are words in progress, select based on priority
+    if priorities:
+        # Sort by priority (highest first)
+        sorted_words = sorted(priorities.items(), key=lambda x: x[1], reverse=True)
+        word_id, priority = sorted_words[0]
+        word_data = progress[word_id]
+
+        # Find corresponding word in vocabulary
+        word_index = int(word_id.split("_")[1]) - 1
+        selected_word = vocabulary.iloc[word_index]
+
+        # Print selection details
+        console.print(f"\n[dim]Selecting word {selected_word['japanese']}[/dim]")
+        console.print(f"[dim]- priority: {priority:.1f}[/dim]")
+        console.print(
+            f"[dim]- success rate: {(word_data['successes'] / word_data['attempts'] * 100):.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
+        )
+        console.print(f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]")
+        console.print(f"[dim]- optimal interval: {word_data['interval']} hours[/dim]")
+        console.print(
+            f"[dim]- last attempt was a success: {'No' if word_data['last_attempt_was_failure'] else 'Yes'}[/dim]"
+        )
+        console.print(f"[dim]- last presented: {word_data['last_seen']}[/dim]")
+
+        return selected_word
+
+    # If no words are available (all mastered), select a random word
+    return vocabulary.sample(n=1).iloc[0]
 
 
 def check_answer(user_answer, correct_answer):

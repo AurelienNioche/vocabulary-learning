@@ -90,17 +90,18 @@ class TestVocabularyManagement(unittest.TestCase):
 
         # Verify word was added
         self.assertEqual(len(vocab_data), 1)
-        word_data = list(vocab_data.values())[0]
-        self.assertEqual(word_data["hiragana"], "あたらしい")
-        self.assertEqual(word_data["kanji"], "新しい")
-        self.assertEqual(word_data["french"], "nouveau")
-        self.assertEqual(word_data["example_sentence"], "新しい車を買いました。")
+        word_id = list(vocab_data.keys())[0]
+        self.assertEqual(vocab_data[word_id]["hiragana"], "あたらしい")
+        self.assertEqual(vocab_data[word_id]["kanji"], "新しい")
+        self.assertEqual(vocab_data[word_id]["french"], "nouveau")
+        self.assertEqual(vocab_data[word_id]["example_sentence"], "新しい車を買いました。")
 
         # Verify Firebase sync
         self.mock_ref.set.assert_called_once_with(vocab_data)
 
     @patch("builtins.input")
-    def test_add_vocabulary_duplicate(self, mock_input):
+    @patch("rich.prompt.Confirm.ask", return_value=False)
+    def test_add_vocabulary_duplicate(self, mock_confirm, mock_input):
         """Test adding duplicate vocabulary."""
         # Create existing vocabulary file
         with open(self.vocab_file, "w", encoding="utf-8") as f:
@@ -116,10 +117,10 @@ class TestVocabularyManagement(unittest.TestCase):
                 f,
             )
 
-        # Mock user inputs
+        # Mock user inputs - provide enough inputs for both the duplicate case and a new word
         mock_input.side_effect = [
             "あたらしい",  # Japanese (duplicate)
-            "q",  # Quit
+            "q",  # Quit after duplicate is detected
         ]
 
         # Mock load_vocabulary function
@@ -130,10 +131,14 @@ class TestVocabularyManagement(unittest.TestCase):
 
         add_vocabulary(self.vocab_file, vocabulary, None, self.console, mock_load_vocab)
 
-        # Verify file wasn't modified
+        # Verify file contents
         with open(self.vocab_file, "r", encoding="utf-8") as f:
             vocab_data = json.load(f)
+
+        # Verify word was not added again
         self.assertEqual(len(vocab_data), 1)
+        word_id = list(vocab_data.keys())[0]
+        self.assertEqual(vocab_data[word_id]["hiragana"], "あたらしい")
 
     @patch("builtins.input")
     def test_add_vocabulary_missing_required_fields(self, mock_input):
@@ -143,7 +148,8 @@ class TestVocabularyManagement(unittest.TestCase):
             "あたらしい",  # Japanese
             "",  # Kanji (empty)
             "",  # French (empty)
-            "q",  # Quit
+            "",  # Example (empty)
+            "n",  # Don't add another word
         ]
 
         # Mock load_vocabulary function
@@ -151,8 +157,18 @@ class TestVocabularyManagement(unittest.TestCase):
 
         add_vocabulary(self.vocab_file, self.vocabulary, None, self.console, mock_load_vocab)
 
-        # Verify no file was created
-        self.assertFalse(os.path.exists(self.vocab_file))
+        # Verify file was created
+        self.assertTrue(os.path.exists(self.vocab_file))
+
+        # Check file contents
+        with open(self.vocab_file, "r", encoding="utf-8") as f:
+            vocab_data = json.load(f)
+
+        # Verify word was added
+        self.assertEqual(len(vocab_data), 1)
+        word_id = list(vocab_data.keys())[0]
+        self.assertEqual(vocab_data[word_id]["hiragana"], "あたらしい")
+        self.assertEqual(vocab_data[word_id]["kanji"], "")
 
     @patch("builtins.input")
     def test_add_vocabulary_firebase_sync_failure(self, mock_input):
@@ -265,6 +281,81 @@ class TestVocabularyManagement(unittest.TestCase):
             f for f in os.listdir(self.temp_dir) if f.startswith("progress.json.backup")
         ]
         self.assertEqual(len(backup_files), 1)
+
+    @patch("builtins.input")
+    def test_add_vocabulary_with_old_format(self, mock_input):
+        """Test adding vocabulary when existing file uses old list format."""
+        # Create existing vocabulary file with old list format
+        with open(self.vocab_file, "w", encoding="utf-8") as f:
+            json.dump(
+                [
+                    {
+                        "japanese": "こんにちは",
+                        "kanji": "今日は",
+                        "french": "bonjour",
+                        "example_sentence": "",
+                    }
+                ],
+                f,
+            )
+
+        # Mock user inputs
+        mock_input.side_effect = [
+            "さっき",  # Japanese
+            "",  # Kanji (empty)
+            "à l'instant",  # French
+            "",  # Example (empty)
+            "n",  # Don't add another word
+        ]
+
+        # Mock load_vocabulary function
+        mock_load_vocab = MagicMock()
+
+        with patch("rich.prompt.Confirm.ask", return_value=False):
+            add_vocabulary(self.vocab_file, self.vocabulary, None, self.console, mock_load_vocab)
+
+        # Verify file contents
+        with open(self.vocab_file, "r", encoding="utf-8") as f:
+            vocab_data = json.load(f)
+
+        # Verify both words are present in dictionary format
+        self.assertEqual(len(vocab_data), 2)
+        self.assertTrue(isinstance(vocab_data, dict))
+        self.assertTrue(any(word["hiragana"] == "こんにちは" for word in vocab_data.values()))
+        self.assertTrue(any(word["hiragana"] == "さっき" for word in vocab_data.values()))
+
+    @patch("builtins.input")
+    def test_add_vocabulary_with_invalid_format(self, mock_input):
+        """Test adding vocabulary when existing file has invalid format."""
+        # Create existing vocabulary file with invalid format (not a dict)
+        with open(self.vocab_file, "w", encoding="utf-8") as f:
+            json.dump(["some", "invalid", "data"], f)
+
+        # Mock user inputs
+        mock_input.side_effect = [
+            "さっき",  # Japanese
+            "",  # Kanji (empty)
+            "à l'instant",  # French
+            "",  # Example (empty)
+            "n",  # Don't add another word
+        ]
+
+        # Mock load_vocabulary function
+        mock_load_vocab = MagicMock()
+
+        with patch("rich.prompt.Confirm.ask", return_value=False):
+            add_vocabulary(self.vocab_file, self.vocabulary, None, self.console, mock_load_vocab)
+
+        # Verify file contents
+        with open(self.vocab_file, "r", encoding="utf-8") as f:
+            vocab_data = json.load(f)
+
+        # Verify the word was added to a fresh dictionary
+        self.assertEqual(len(vocab_data), 1)
+        self.assertTrue(isinstance(vocab_data, dict))
+        word_id = list(vocab_data.keys())[0]
+        self.assertEqual(vocab_data[word_id]["hiragana"], "さっき")
+        self.assertEqual(vocab_data[word_id]["french"], "à l'instant")
 
 
 if __name__ == "__main__":

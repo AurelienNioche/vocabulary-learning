@@ -42,6 +42,8 @@ def validate_word_entry(entry: Dict) -> bool:
     # Validate translations
     if not isinstance(entry["translations"], list):
         return False
+    if not entry["translations"]:  # Check if translations list is empty
+        return False
     if not all(isinstance(t, str) and t.strip() for t in entry["translations"]):
         return False
 

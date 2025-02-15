@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 
 from rich.console import Console
 
+from vocabulary_learning.core.progress_tracking import is_mastered
 from vocabulary_learning.services.progress_service import ProgressService
 from vocabulary_learning.services.vocabulary_service import VocabularyService
 
@@ -148,13 +149,8 @@ class PracticeService:
                 total_attempts += progress["attempts"]
                 total_successes += progress["successes"]
 
-                # Consider a word mastered if it has been successfully reviewed at least 5 times
-                # and has a success rate of at least 90%
-                if (
-                    progress["successes"] >= 5
-                    and progress["attempts"] > 0
-                    and (progress["successes"] / progress["attempts"]) >= 0.9
-                ):
+                # Check if word is mastered
+                if is_mastered(progress):
                     words_mastered += 1
 
         return {

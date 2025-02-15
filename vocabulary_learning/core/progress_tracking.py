@@ -2,7 +2,7 @@
 
 import random
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 import pytz
 
@@ -12,70 +12,80 @@ def get_utc_now():
     return datetime.now(pytz.UTC)
 
 
-def update_progress(word_id: str, success: bool, progress: Dict, save_callback):
-    """Update progress for a given word and sync with Firebase.
+def calculate_next_interval(current_interval: float, easiness_factor: float) -> float:
+    """Calculate the next review interval based on the SuperMemo 2 algorithm.
 
     Args:
-        word_id: The word ID (e.g., 'word_000001')
+        current_interval: Current interval in hours
+        easiness_factor: Current easiness factor
+
+    Returns:
+        Next interval in hours
+    """
+    if current_interval == 0:
+        return 0.0333  # First success: wait 2 minutes
+    elif current_interval == 0.0333:
+        return 24  # Second success: wait 1 day
+    else:
+        return current_interval * easiness_factor  # Increase interval based on easiness
+
+
+def update_progress(word_id: str, success: bool, progress: Dict, save_callback: Callable) -> None:
+    """Update progress for a word after a practice attempt.
+
+    Args:
+        word_id: ID of the word
         success: Whether the attempt was successful
-        progress: Progress dictionary
+        progress: Progress dictionary to update
         save_callback: Function to call to save progress
     """
+    now = get_utc_now()
+
+    # Initialize word data if not present
     if word_id not in progress:
         progress[word_id] = {
             "attempts": 0,
             "successes": 0,
-            "last_seen": get_utc_now().isoformat(),
-            "review_intervals": [],
+            "interval": 0,  # Start with 0 interval
             "last_attempt_was_failure": False,
-            "easiness_factor": 2.5,  # Initial easiness factor for SuperMemo 2
-            "interval": 0,  # Current interval in hours
+            "last_seen": now.isoformat(),
+            "review_intervals": [],
+            "easiness_factor": 2.5,  # Initial easiness factor
         }
-    elif "interval" not in progress[word_id]:
-        # Add interval if missing in existing progress data
-        progress[word_id]["interval"] = 0
-        progress[word_id]["easiness_factor"] = progress[word_id].get("easiness_factor", 2.5)
-        progress[word_id]["last_attempt_was_failure"] = progress[word_id].get(
-            "last_attempt_was_failure", False
-        )
 
-    # Calculate and store interval since last review
-    last_seen = datetime.fromisoformat(progress[word_id]["last_seen"])
-    if last_seen.tzinfo is None:  # Handle old timestamps
-        last_seen = pytz.UTC.localize(last_seen)
-    hours_since_last = (get_utc_now() - last_seen).total_seconds() / 3600.0
-    progress[word_id]["review_intervals"].append(hours_since_last)
+    # Calculate time since last review
+    if "last_seen" in progress[word_id]:
+        last_seen = datetime.fromisoformat(progress[word_id]["last_seen"])
+        if last_seen.tzinfo is None:
+            last_seen = pytz.UTC.localize(last_seen)
+        hours_since_last = (now - last_seen).total_seconds() / 3600.0
+        progress[word_id]["review_intervals"].append(hours_since_last)
 
-    # Keep only last 10 intervals to track progress
-    if len(progress[word_id]["review_intervals"]) > 10:
-        progress[word_id]["review_intervals"] = progress[word_id]["review_intervals"][-10:]
-
+    # Update statistics
     progress[word_id]["attempts"] += 1
     if success:
         progress[word_id]["successes"] += 1
-        # Update SuperMemo 2 parameters
-        if progress[word_id]["interval"] == 0:
-            progress[word_id]["interval"] = 0.0333  # First success: wait 2 minutes
-        elif progress[word_id]["interval"] == 0.0333:
-            progress[word_id]["interval"] = 24  # Second success: wait 1 day
-        else:
-            # Calculate new interval using easiness factor
-            progress[word_id]["interval"] *= progress[word_id]["easiness_factor"]
 
-        # Update easiness factor (increase for correct answers)
-        progress[word_id]["easiness_factor"] = max(1.3, progress[word_id]["easiness_factor"] + 0.1)
-        progress[word_id]["last_attempt_was_failure"] = False
+    # Update easiness factor and interval
+    if success:
+        progress[word_id]["interval"] = calculate_next_interval(
+            progress[word_id]["interval"],
+            progress[word_id]["easiness_factor"],
+        )
+        # Only increase easiness factor if it's not already at maximum
+        if progress[word_id]["easiness_factor"] < 2.5:
+            progress[word_id]["easiness_factor"] = min(
+                progress[word_id]["easiness_factor"] + 0.1, 2.5
+            )
     else:
-        # Decrease interval and easiness factor for incorrect answers
-        progress[word_id]["interval"] = max(
-            0.0333, progress[word_id]["interval"] * 0.5
-        )  # Minimum 2 minutes
-        progress[word_id]["easiness_factor"] = max(1.3, progress[word_id]["easiness_factor"] - 0.2)
-        progress[word_id]["last_attempt_was_failure"] = True
+        progress[word_id]["interval"] = 0.0333  # Reset to 2 minutes on failure
+        progress[word_id]["easiness_factor"] = max(progress[word_id]["easiness_factor"] - 0.2, 1.3)
 
-    progress[word_id]["last_seen"] = get_utc_now().isoformat()
+    # Update last seen and failure status
+    progress[word_id]["last_seen"] = now.isoformat()
+    progress[word_id]["last_attempt_was_failure"] = not success
 
-    # Save progress immediately after update
+    # Save progress
     save_callback()
 
 
@@ -122,13 +132,35 @@ def calculate_priority(word_data: Optional[Dict], active_words_count: int) -> fl
     return min(1.0, priority)
 
 
+def is_mastered(word_data: Dict) -> bool:
+    """Check if a word meets the mastery criteria.
+
+    A word is considered mastered if:
+    1. It has at least 5 successful reviews
+    2. It has a success rate of at least 90%
+
+    Args:
+        word_data: Dictionary containing word progress data
+
+    Returns:
+        True if the word is mastered, False otherwise
+    """
+    if not word_data:
+        return False
+
+    attempts = word_data.get("attempts", 0)
+    successes = word_data.get("successes", 0)
+
+    if attempts == 0:
+        return False
+
+    return successes >= 5 and (successes / attempts) >= 0.9
+
+
 def count_active_learning_words(progress_data: Dict) -> int:
     """Count how many words are being actively learned.
 
     A word is considered "active" if it hasn't been mastered yet.
-    A word is considered mastered if:
-    1. It has at least 5 successful reviews
-    2. It has a success rate of at least 90%
 
     Args:
         progress_data: Dictionary of word progress data
@@ -140,16 +172,11 @@ def count_active_learning_words(progress_data: Dict) -> int:
 
     for word_data in progress_data.values():
         # Skip if no attempts
-        attempts = word_data.get("attempts", 0)
-        if attempts == 0:
+        if word_data.get("attempts", 0) == 0:
             continue
 
-        # Check mastery criteria
-        successes = word_data.get("successes", 0)
-        success_rate = successes / attempts
-
         # A word is active if it's not mastered
-        if success_rate < 0.9 or successes < 5:
+        if not is_mastered(word_data):
             active_count += 1
 
     return active_count
