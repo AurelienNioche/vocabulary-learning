@@ -94,6 +94,53 @@ pip install -e .         # Install only runtime dependencies
      FIREBASE_USER_EMAIL=your-email
      ```
 
+## Docker Installation
+
+You can also run the application using Docker:
+
+1. Clone the repository:
+```bash
+git clone https://github.com/AurelienNioche/vocabulary-learning.git
+cd vocabulary-learning
+```
+
+2. Create necessary directories:
+```bash
+mkdir -p vocabulary_learning/data
+```
+
+3. Set up Firebase credentials:
+```bash
+mkdir -p .firebase
+# Copy your Firebase credentials to .firebase/credentials.json
+```
+
+4. Create a `.env` file:
+```bash
+FIREBASE_CREDENTIALS_PATH=/app/.firebase/credentials.json
+FIREBASE_DATABASE_URL=your-database-url
+FIREBASE_USER_EMAIL=your-email
+```
+
+5. Build and run with Docker:
+```bash
+# Build the image
+docker build -t vocab-learning .
+
+# Run the container
+docker run -it --rm \
+  -v $(pwd)/vocabulary_learning/data:/app/vocabulary_learning/data \
+  -v $(pwd)/.firebase:/app/.firebase \
+  -v $(pwd)/.env:/app/.env \
+  vocab-learning
+```
+
+The Docker container:
+- Persists your vocabulary and progress in `vocabulary_learning/data/`
+- Uses your Firebase credentials from `.firebase/`
+- Loads environment variables from `.env`
+- Runs in interactive mode for CLI usage
+
 ## Usage
 
 1. Run the program:
