@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from rich.console import Console
 
+from vocabulary_learning.core.file_operations import load_vocabulary
 from vocabulary_learning.main import VocabularyLearner
 
 
@@ -134,16 +135,18 @@ class TestVocabularyLearner(unittest.TestCase):
         )
 
         # Mock input to select "Add vocabulary" then "Quit"
-        with patch("builtins.input", side_effect=["3", "5"]):
+        with patch("builtins.input", side_effect=["3", ":q"]):
             learner.run()
 
             # Verify add_vocabulary was called with correct parameters
             mock_add_vocab.assert_called_once_with(
-                learner.vocabulary,
-                learner.vocab_file,
-                learner.vocab_ref,
-                learner.console,
-                learner.japanese_converter,
+                vocabulary=learner.vocabulary,
+                vocab_file=learner.vocab_file,
+                vocab_ref=learner.vocab_ref,
+                console=learner.console,
+                load_vocabulary=load_vocabulary,
+                japanese_converter=learner.japanese_converter,
+                vim_commands=learner.vim_commands,
             )
 
 
