@@ -19,6 +19,7 @@ A command-line tool for learning Japanese vocabulary with spaced repetition and 
 ### Cloud Integration
 - Firebase integration for data backup
 - Local JSON backup for offline use
+- Automatic sync between devices
 
 ### Learning Features
 - Smart answer validation:
@@ -49,7 +50,7 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
      - Time since last review relative to scheduled interval
      - Success rate (lower rates get higher priority)
      - Number of attempts (newer words get higher priority)
-     - Last attempt result (failed words get 20% higher priority)
+     - Last attempt result (failed words get higher priority)
    - Words not due for review are skipped
    - New words get high but not maximum priority
    - Priority is scaled based on active word count
@@ -66,10 +67,40 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
 - `:q` - Quit program (saves progress)
 - `:m` - Return to menu
 - `:s` - Show word statistics
+- `:S` - Show all statistics
 - `:e` - Show example sentence
 - `:d` - Don't know (show answer)
 
+## Requirements
+
+- Python 3.10 or higher
+- Docker (for containerized installation)
+- Firebase account (for cloud sync)
+
 ## Installation
+
+### Quick Installation (Recommended)
+
+The easiest way to install is using our automated setup script:
+
+```bash
+git clone https://github.com/AurelienNioche/vocabulary-learning.git
+cd vocabulary-learning
+chmod +x install.sh
+./install.sh
+```
+
+The script will:
+- Check for required dependencies
+- Create necessary directories
+- Guide you through Firebase configuration
+- Set up your timezone
+- Build the Docker image
+- Create the `vocab` command in your PATH
+
+### Manual Installation
+
+If you prefer to set everything up manually:
 
 1. Clone the repository:
 ```bash
@@ -92,140 +123,41 @@ pip install -e .         # Install only runtime dependencies
      FIREBASE_CREDENTIALS_PATH=/path/to/credentials.json
      FIREBASE_DATABASE_URL=your-database-url
      FIREBASE_USER_EMAIL=your-email
+     TIMEZONE=your-timezone  # e.g., Europe/Helsinki
      ```
 
-## Quick Installation (Docker)
+### Docker Installation
 
-The easiest way to install is using our automated setup script:
+For a clean, isolated environment:
 
-1. Clone the repository:
+1. Build the image:
 ```bash
-git clone https://github.com/AurelienNioche/vocabulary-learning.git
-cd vocabulary-learning
+docker build -t vocab-learning .
 ```
 
-2. Run the installation script:
+2. Run the container:
 ```bash
-chmod +x install.sh
-./install.sh
+docker run -it --rm \
+  -v "$(pwd)/data":/app/vocabulary_learning/data \
+  -v "$(pwd)/firebase":/app/firebase \
+  -v "$(pwd)/.env:/app/.env \
+  vocab-learning
 ```
 
-The script will:
-- Check if Docker is installed
-- Create necessary directories
-- Guide you through Firebase configuration
-- Build the Docker image
-- Create the `vocab` command in your PATH
+## Data Storage
 
-3. Start the application:
-```bash
-vocab
-```
-
-That's it! The `vocab` command will be available system-wide, and your data will be automatically persisted in the appropriate directories.
-
-### OS-Specific Notes
-
-#### macOS
-- The script will install the `vocab` command in `~/bin`
-- If `~/bin` doesn't exist, it will be created and added to your PATH
-- You may need to run `source ~/.zshrc` after first installation
-- Data is stored in `~/Library/Application Support/VocabularyLearning/`
-
-#### Linux
-- The script will install the `vocab` command in `/usr/local/bin`
-- May require sudo access for installation
-- Fallback to `./vocab-docker` if system-wide installation fails
-- Data is stored in `~/.local/share/vocabulary-learning/`
-
-### Data Storage
-
-Your data will be organized in the following structure:
+Your data is organized in the following structure:
 - `data/` - Vocabulary and progress files
 - `firebase/` - Firebase credentials
 - `.env` - Environment configuration
 
-The location depends on your operating system:
+Location by OS:
 - macOS: `~/Library/Application Support/VocabularyLearning/`
 - Linux: `~/.local/share/vocabulary-learning/`
 
-This follows OS conventions for application data and ensures your data persists independently of the installation directory.
-
-## Manual Docker Installation
-
-If you prefer to set everything up manually, follow these steps:
-
-1. Clone the repository:
-```bash
-git clone https://github.com/AurelienNioche/vocabulary-learning.git
-cd vocabulary-learning
-```
-
-2. Create necessary directories:
-```bash
-mkdir -p vocabulary_learning/data
-```
-
-3. Set up Firebase credentials:
-```bash
-mkdir -p .firebase
-# Copy your Firebase credentials to .firebase/credentials.json
-```
-
-4. Create a `.env` file:
-```bash
-FIREBASE_CREDENTIALS_PATH=/app/.firebase/credentials.json
-FIREBASE_DATABASE_URL=your-database-url
-FIREBASE_USER_EMAIL=your-email
-```
-
-5. Build and run with Docker:
-```bash
-# Build the image
-docker build -t vocab-learning .
-
-# Run the container
-docker run -it --rm \
-  -v $(pwd)/vocabulary_learning/data:/app/vocabulary_learning/data \
-  -v $(pwd)/.firebase:/app/.firebase \
-  -v $(pwd)/.env:/app/.env \
-  vocab-learning
-```
-
-The Docker container:
-- Persists your vocabulary and progress in `vocabulary_learning/data/`
-- Uses your Firebase credentials from `.firebase/`
-- Loads environment variables from `.env`
-- Runs in interactive mode for CLI usage
-
-## Updating the Application
-
-If you're using Docker, follow these steps to update to the latest version:
-
-1. Pull the latest changes:
-```bash
-git pull origin main
-```
-
-2. Rebuild the Docker image:
-```bash
-docker build -t vocab-learning .
-```
-
-3. Run the container as usual:
-```bash
-docker run -it --rm \
-  -v $(pwd)/vocabulary_learning/data:/app/vocabulary_learning/data \
-  -v $(pwd)/.firebase:/app/.firebase \
-  -v $(pwd)/.env:/app/.env \
-  vocab-learning
-```
-
-Your data and progress will be preserved as they are stored in the mounted volumes.
-
 ## Usage
 
-1. Run the program:
+1. Start the application:
 ```bash
 vocab
 ```
@@ -239,46 +171,44 @@ vocab
 
 3. During practice:
 - Type your French translation
-- Use `:d` if you don't know the answer
-- Use `:e` to see example sentences
-- Use `:s` to see your statistics for the current word
+- Use Vim-like commands for navigation
+- View statistics and examples
+- Track your progress
 
 ## Adding Vocabulary
 
-- Enter Japanese words in hiragana or kanji
-- Add multiple French translations using slashes (e.g., "bonjour/salut")
-- Optional example sentences for context
-- Words are automatically assigned sequential IDs
+1. Choose "Add vocabulary" from the main menu
+2. Enter:
+   - Japanese word (hiragana or kanji)
+   - Multiple French translations (separated by slashes)
+   - Example sentence (optional)
+   - Notes (optional)
 
-## Progress Tracking
+## Updating
 
-Your progress is:
-- Saved automatically after each answer
-- Synced with Firebase (if configured)
-- Backed up locally in JSON format
-- Tracked with detailed statistics including:
-  - Success rate
-  - Review intervals
-  - Last practice time
-  - Easiness factor
-  - Mastery status
+1. Pull latest changes:
+```bash
+git pull origin main
+```
 
-## Development
+2. Rebuild (if using Docker):
+```bash
+docker build -t vocab-learning .
+```
 
-- Tests: `pytest tests/`
-- Code formatting: `black .`
-- Import sorting: `isort .`
-- Linting: `flake8`
-- Pre-commit hooks available
+Your data and progress will be preserved as they are stored separately.
 
-## Tips
+## Contributing
 
-- Use `:d` when you don't know a word instead of guessing
-- Check example sentences with `:e` to learn context
-- Review your statistics with `:s` to track progress
-- Let the spaced repetition system guide your learning pace
-- Focus on mastering a small set of words before adding more
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests:
+```bash
+pytest
+```
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the AGPL v3 License - see the LICENSE file for details.

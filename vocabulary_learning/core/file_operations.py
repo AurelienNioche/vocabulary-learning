@@ -147,7 +147,11 @@ def load_progress(progress_file, progress_ref, console):
         console.print("[dim]Loading progress from local file...[/dim]")
         if os.path.exists(progress_file):
             with open(progress_file, "r", encoding="utf-8") as f:
-                progress = json.load(f)
+                content = f.read().strip()
+                if not content:  # Handle empty file
+                    console.print("[yellow]Empty progress file, starting fresh[/yellow]")
+                    return {}
+                progress = json.loads(content)
                 # Migrate old progress data to new format
                 for word in progress:
                     if "review_intervals" not in progress[word]:

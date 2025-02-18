@@ -6,41 +6,38 @@ build-backend = "hatchling.build"
 name = "vocabulary-learning"
 version = "0.1.0"
 authors = [
-    { name="Aurelien Nioche", email="aurelien.nioche@gmail.com" },
+    { name="Aurelien Nioche", email="nioche.aurelien@gmail.com" },
 ]
 description = "A tool for learning Japanese vocabulary"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "firebase-admin",
-    "python-dotenv",
-    "rich",
-    "pandas",
-    "pykakasi",
-    "pytz",
+    "firebase-admin>=6.2.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.6.0",
+    "pykakasi>=2.2.1",
+    "Levenshtein>=0.21.1",
+    "httpx>=0.25.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest",
-    "pytest-cov",
-    "black",
-    "isort",
-    "flake8",
-    "pre-commit",
-]
+[project.urls]
+"Homepage" = "https://github.com/AurelienNioche/vocabulary-learning"
+"Bug Tracker" = "https://github.com/AurelienNioche/vocabulary-learning/issues"
 
 [project.scripts]
-vocab = "vocabulary_learning.main:main"
+vocabulary-learning = "vocabulary_learning.main:main"
 
 [tool.pytest.ini_options]
-addopts = "--cov=vocabulary_learning"
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning:httpx.*:",
+    "ignore::UserWarning"
+]
 
 [tool.black]
 line-length = 100

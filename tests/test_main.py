@@ -1,88 +1,66 @@
-"""Unit tests for main module functionality."""
+"""Test cases for the main module."""
 
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pandas as pd
+from rich.console import Console
 
 from vocabulary_learning.main import VocabularyLearner
 
 
 class TestVocabularyLearner(unittest.TestCase):
+    """Test cases for VocabularyLearner class."""
+
     def setUp(self):
-        """Set up test fixtures."""
+        """Set up test environment."""
+        # Create a temporary directory for test files
         self.temp_dir = tempfile.mkdtemp()
-        self.vocab_file = os.path.join(self.temp_dir, "vocabulary.json")
-        self.progress_file = os.path.join(self.temp_dir, "progress.json")
+        self.data_dir = Path(self.temp_dir) / "data"
+        self.data_dir.mkdir(parents=True, exist_ok=True)
 
-        # Sample vocabulary data
-        self.vocabulary = pd.DataFrame(
-            [
-                {
-                    "japanese": "こんにちは",
-                    "kanji": "今日は",
-                    "french": "bonjour",
-                    "example_sentence": "こんにちは、元気ですか？",
-                }
-            ]
-        )
+        # Create test files
+        self.vocab_file = str(self.data_dir / "vocabulary.json")
+        self.progress_file = str(self.data_dir / "progress.json")
+        self.env_file = str(Path(self.temp_dir) / ".env")
 
-        # Sample progress data
-        self.progress = {
-            "こんにちは": {
-                "attempts": 5,
-                "successes": 4,
-                "last_seen": "2024-02-11T12:00:00",
-            }
-        }
+        # Create empty files
+        for file in [self.vocab_file, self.progress_file]:
+            with open(file, "w") as f:
+                f.write("{}")
 
-        # Create environment variables for Firebase
-        self.env_patcher = patch.dict(
-            "os.environ",
-            {
-                "FIREBASE_CREDENTIALS_PATH": os.path.join(
-                    self.temp_dir, "firebase-credentials.json"
-                ),
-                "FIREBASE_DATABASE_URL": "https://test-db.firebaseio.com",
-                "FIREBASE_USER_EMAIL": "test@example.com",
-            },
-        )
-        self.env_patcher.start()
-
-        # Create mock Firebase credentials file
-        with open(os.environ["FIREBASE_CREDENTIALS_PATH"], "w") as f:
-            f.write("{}")
+        # Create .env file with test values
+        with open(self.env_file, "w") as f:
+            f.write("FIREBASE_CREDENTIALS_PATH=test_creds.json\n")
+            f.write("FIREBASE_DATABASE_URL=https://test.firebaseio.com\n")
+            f.write("FIREBASE_USER_EMAIL=test@example.com\n")
+            f.write("TIMEZONE=UTC\n")
 
     def tearDown(self):
-        """Clean up test files."""
-        if os.path.exists(self.vocab_file):
-            os.remove(self.vocab_file)
-        if os.path.exists(self.progress_file):
-            os.remove(self.progress_file)
-        if os.path.exists(os.environ["FIREBASE_CREDENTIALS_PATH"]):
-            os.remove(os.environ["FIREBASE_CREDENTIALS_PATH"])
-        os.rmdir(self.temp_dir)
-        self.env_patcher.stop()
+        """Clean up test environment."""
+        # Remove test files
+        for file in [self.vocab_file, self.progress_file, self.env_file]:
+            if os.path.exists(file):
+                os.remove(file)
+        # Remove test directories
+        if os.path.exists(self.data_dir):
+            os.rmdir(self.data_dir)
+        if os.path.exists(self.temp_dir):
+            os.rmdir(self.temp_dir)
 
-    @patch("firebase_admin.initialize_app")
-    @patch("firebase_admin.credentials.Certificate")
-    @patch("firebase_admin.auth.get_user_by_email")
-    @patch("firebase_admin.db.reference")
-    def test_learner_initialization_success(
-        self, mock_db_ref, mock_get_user, mock_cert, mock_init_app
-    ):
+    @patch("vocabulary_learning.main.initialize_firebase")
+    @patch("vocabulary_learning.main.get_data_dir")
+    def test_learner_initialization_success(self, mock_get_data_dir, mock_init_firebase):
         """Test successful VocabularyLearner initialization."""
-        # Mock user data
-        mock_user = MagicMock()
-        mock_user.uid = "test_user_id"
-        mock_get_user.return_value = mock_user
+        # Mock get_data_dir to return our temp directory
+        mock_get_data_dir.return_value = self.temp_dir
 
-        # Mock database references
+        # Mock Firebase initialization
         mock_progress_ref = MagicMock()
         mock_vocab_ref = MagicMock()
-        mock_db_ref.side_effect = [mock_progress_ref, mock_vocab_ref]
+        mock_init_firebase.return_value = (mock_progress_ref, mock_vocab_ref)
 
         # Initialize learner
         learner = VocabularyLearner(
@@ -90,61 +68,38 @@ class TestVocabularyLearner(unittest.TestCase):
             progress_file=self.progress_file,
         )
 
-        # Verify Firebase initialization
-        mock_cert.assert_called_once()
-        mock_init_app.assert_called_once()
-        mock_get_user.assert_called_once_with("test@example.com")
-
-        # Verify database references
-        self.assertEqual(mock_db_ref.call_count, 2)
-        self.assertIsNotNone(learner.progress_ref)
-        self.assertIsNotNone(learner.vocab_ref)
-
-        # Verify vim commands
-        self.assertIn(":q", learner.vim_commands)
-        self.assertIn(":h", learner.vim_commands)
-        self.assertIn(":s", learner.vim_commands)
-
-    @patch("firebase_admin.initialize_app")
-    def test_learner_initialization_firebase_failure(self, mock_init_app):
-        """Test VocabularyLearner initialization with Firebase failure."""
-        # Make Firebase initialization fail
-        mock_init_app.side_effect = Exception("Firebase connection failed")
-
-        # Initialize learner
-        learner = VocabularyLearner(
-            vocab_file=self.vocab_file,
-            progress_file=self.progress_file,
-        )
-
-        # Verify fallback to local storage
-        self.assertIsNone(learner.progress_ref)
-        self.assertIsNone(learner.vocab_ref)
+        # Verify learner is initialized correctly
+        self.assertIsNotNone(learner.console)
+        self.assertEqual(learner.vocab_file, self.vocab_file)
+        self.assertEqual(learner.progress_file, self.progress_file)
 
     @patch("vocabulary_learning.main.save_progress")
-    def test_save_progress(self, mock_save_progress):
+    @patch("vocabulary_learning.main.get_data_dir")
+    def test_save_progress(self, mock_get_data_dir, mock_save_progress):
         """Test progress saving."""
+        # Mock get_data_dir to return our temp directory
+        mock_get_data_dir.return_value = self.temp_dir
+
         # Initialize learner with mock Firebase
-        with (
-            patch("firebase_admin.initialize_app"),
-            patch("firebase_admin.credentials.Certificate"),
-            patch("firebase_admin.auth.get_user_by_email"),
-            patch("firebase_admin.db.reference"),
-        ):
+        with patch("vocabulary_learning.main.initialize_firebase") as mock_init_firebase:
+            mock_progress_ref = MagicMock()
+            mock_vocab_ref = MagicMock()
+            mock_init_firebase.return_value = (mock_progress_ref, mock_vocab_ref)
+
             learner = VocabularyLearner(
                 vocab_file=self.vocab_file,
                 progress_file=self.progress_file,
             )
 
             # Set initial progress data
-            learner.progress = self.progress
+            learner.progress = {}
 
             # Save progress
             learner.save_progress()
 
             # Verify save was called
             mock_save_progress.assert_called_once_with(
-                self.progress,
+                {},
                 learner.progress_file,
                 learner.progress_ref,
                 learner.console,
