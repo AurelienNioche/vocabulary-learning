@@ -18,6 +18,10 @@ RUN pip install -e .
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
+# Create necessary directories for user data
+RUN mkdir -p /app/vocabulary_learning/data && \
+    mkdir -p /app/firebase
+
 # Create a non-root user
 RUN useradd -m appuser && \
     chown -R appuser:appuser /app

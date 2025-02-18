@@ -17,7 +17,7 @@ from vocabulary_learning.core.japanese_utils import JapaneseTextConverter
 from vocabulary_learning.core.practice import practice_mode
 from vocabulary_learning.core.progress_tracking import update_progress
 from vocabulary_learning.core.ui_components import show_help, show_progress, show_word_statistics
-from vocabulary_learning.core.utils import signal_handler
+from vocabulary_learning.core.utils import get_data_dir, signal_handler
 from vocabulary_learning.core.vocabulary_management import add_vocabulary, reset_progress
 
 # Get the package root directory
@@ -31,20 +31,23 @@ PACKAGE_ROOT = Path(__file__).parent
 class VocabularyLearner:
     def __init__(
         self,
-        vocab_file="vocabulary_learning/data/vocabulary.json",
-        progress_file="vocabulary_learning/data/progress.json",
+        vocab_file=None,
+        progress_file=None,
     ):
-        self.vocab_file = vocab_file
-        self.progress_file = progress_file
+        # Get OS-specific data directory
+        data_dir = Path(get_data_dir()) / "data"
+
+        # Set default file paths if not provided
+        self.vocab_file = str(vocab_file or data_dir / "vocabulary.json")
+        self.progress_file = str(progress_file or data_dir / "progress.json")
 
         # Ensure data directory exists
-        data_dir = Path(self.vocab_file).parent
         data_dir.mkdir(parents=True, exist_ok=True)
 
         self.console = Console()
 
         # Initialize Firebase
-        load_dotenv()
+        load_dotenv(Path(get_data_dir()) / ".env")
         cred_path = os.path.expandvars(os.getenv("FIREBASE_CREDENTIALS_PATH"))
 
         if not os.path.exists(cred_path):

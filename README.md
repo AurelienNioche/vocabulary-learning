@@ -94,9 +94,66 @@ pip install -e .         # Install only runtime dependencies
      FIREBASE_USER_EMAIL=your-email
      ```
 
-## Docker Installation
+## Quick Installation (Docker)
 
-You can also run the application using Docker:
+The easiest way to install is using our automated setup script:
+
+1. Clone the repository:
+```bash
+git clone https://github.com/AurelienNioche/vocabulary-learning.git
+cd vocabulary-learning
+```
+
+2. Run the installation script:
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+The script will:
+- Check if Docker is installed
+- Create necessary directories
+- Guide you through Firebase configuration
+- Build the Docker image
+- Create the `vocab` command in your PATH
+
+3. Start the application:
+```bash
+vocab
+```
+
+That's it! The `vocab` command will be available system-wide, and your data will be automatically persisted in the appropriate directories.
+
+### OS-Specific Notes
+
+#### macOS
+- The script will install the `vocab` command in `~/bin`
+- If `~/bin` doesn't exist, it will be created and added to your PATH
+- You may need to run `source ~/.zshrc` after first installation
+- Data is stored in `~/Library/Application Support/VocabularyLearning/`
+
+#### Linux
+- The script will install the `vocab` command in `/usr/local/bin`
+- May require sudo access for installation
+- Fallback to `./vocab-docker` if system-wide installation fails
+- Data is stored in `~/.local/share/vocabulary-learning/`
+
+### Data Storage
+
+Your data will be organized in the following structure:
+- `data/` - Vocabulary and progress files
+- `firebase/` - Firebase credentials
+- `.env` - Environment configuration
+
+The location depends on your operating system:
+- macOS: `~/Library/Application Support/VocabularyLearning/`
+- Linux: `~/.local/share/vocabulary-learning/`
+
+This follows OS conventions for application data and ensures your data persists independently of the installation directory.
+
+## Manual Docker Installation
+
+If you prefer to set everything up manually, follow these steps:
 
 1. Clone the repository:
 ```bash
@@ -140,6 +197,31 @@ The Docker container:
 - Uses your Firebase credentials from `.firebase/`
 - Loads environment variables from `.env`
 - Runs in interactive mode for CLI usage
+
+## Updating the Application
+
+If you're using Docker, follow these steps to update to the latest version:
+
+1. Pull the latest changes:
+```bash
+git pull origin main
+```
+
+2. Rebuild the Docker image:
+```bash
+docker build -t vocab-learning .
+```
+
+3. Run the container as usual:
+```bash
+docker run -it --rm \
+  -v $(pwd)/vocabulary_learning/data:/app/vocabulary_learning/data \
+  -v $(pwd)/.firebase:/app/.firebase \
+  -v $(pwd)/.env:/app/.env \
+  vocab-learning
+```
+
+Your data and progress will be preserved as they are stored in the mounted volumes.
 
 ## Usage
 

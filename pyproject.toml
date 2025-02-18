@@ -5,73 +5,54 @@ build-backend = "hatchling.build"
 [project]
 name = "vocabulary-learning"
 version = "0.1.0"
-description = "A command-line tool for learning Japanese vocabulary with spaced repetition and Firebase integration"
+authors = [
+    { name="Aurelien Nioche", email="aurelien.nioche@gmail.com" },
+]
+description = "A tool for learning Japanese vocabulary"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "AGPL-3.0"
-authors = [
-    { name = "Aurelien Nioche", email = "nioche.aurelien@gmail.com" },
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
 ]
 dependencies = [
-    "pandas>=2.0.0",
-    "rich>=13.0.0",
-    "firebase-admin>=6.0.0",
-    "python-dotenv>=1.0.0",
-    "pykakasi>=2.2.1",
-    "googletrans==3.1.0a0",
-    "fastapi>=0.104.1",
-    "uvicorn>=0.34.0",
+    "firebase-admin",
+    "python-dotenv",
+    "rich",
+    "pandas",
+    "pykakasi",
+    "pytz",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "black>=22.0.0",
-    "isort>=5.0.0",
-    "flake8>=4.0.0",
-    "pytest-cov>=4.0.0",
-    "pre-commit>=3.5.0",
+    "pytest",
+    "pytest-cov",
+    "black",
+    "isort",
+    "flake8",
+    "pre-commit",
 ]
 
 [project.scripts]
 vocab = "vocabulary_learning.main:main"
 
-[tool.hatch.build.targets.wheel]
-packages = ["vocabulary_learning"]
-
 [tool.pytest.ini_options]
-testpaths = ["vocabulary_learning/tests"]
-python_files = ["test_*.py"]
-addopts = "-v --cov=vocabulary_learning --cov-report=term-missing"
+addopts = "--cov=vocabulary_learning"
+testpaths = ["tests"]
 
 [tool.black]
 line-length = 100
-target-version = ["py310"]
-include = '\.pyi?$'
+target-version = ['py310']
 
 [tool.isort]
 profile = "black"
 line_length = 100
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
 
-[tool.coverage.run]
-source = ["vocabulary_learning"]
-omit = [
-    "vocabulary_learning/tests/*",
-    "vocabulary_learning/utils/*",
-]
+[tool.hatch.build.targets.wheel]
+packages = ["vocabulary_learning"]
 
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if self.debug:",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "pass",
-    "raise ImportError",
-]
+[tool.hatch.build.targets.wheel.sources]
+"vocabulary_learning" = "vocabulary_learning"
+"vocabulary_learning/default_data" = "vocabulary_learning/default_data"

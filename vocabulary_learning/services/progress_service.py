@@ -12,29 +12,26 @@ from vocabulary_learning.core.progress_tracking import (
     calculate_priority,
     count_active_learning_words,
 )
+from vocabulary_learning.services.base_service import BaseService
 
 
-class ProgressService:
+class ProgressService(BaseService):
     def __init__(
         self,
-        progress_file: str,
+        progress_file: Optional[str] = None,
         progress_ref: Optional[db.Reference] = None,
         console: Optional[Console] = None,
     ):
         """Initialize progress service.
 
         Args:
-            progress_file: Path to progress JSON file
+            progress_file: Path to progress JSON file (optional)
             progress_ref: Firebase reference for progress
             console: Rich console for output (optional)
         """
-        self.progress_file = progress_file
+        super().__init__(console)
+        self.progress_file = str(progress_file or self.get_data_file("progress.json"))
         self.progress_ref = progress_ref
-        self.console = console or Console()
-
-        # Ensure data directory exists
-        data_dir = Path(progress_file).parent
-        data_dir.mkdir(parents=True, exist_ok=True)
 
         # Load initial progress
         self.progress = self._load_progress()

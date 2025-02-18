@@ -8,29 +8,26 @@ from firebase_admin import db
 from rich.console import Console
 
 from vocabulary_learning.core.vocabulary import format_word_entry, validate_word_entry
+from vocabulary_learning.services.base_service import BaseService
 
 
-class VocabularyService:
+class VocabularyService(BaseService):
     def __init__(
         self,
-        vocabulary_file: str,
+        vocabulary_file: Optional[str] = None,
         vocabulary_ref: Optional[db.Reference] = None,
         console: Optional[Console] = None,
     ):
         """Initialize vocabulary service.
 
         Args:
-            vocabulary_file: Path to vocabulary JSON file
+            vocabulary_file: Path to vocabulary JSON file (optional)
             vocabulary_ref: Firebase reference for vocabulary
             console: Rich console for output (optional)
         """
-        self.vocabulary_file = vocabulary_file
+        super().__init__(console)
+        self.vocabulary_file = str(vocabulary_file or self.get_data_file("vocabulary.json"))
         self.vocabulary_ref = vocabulary_ref
-        self.console = console or Console()
-
-        # Ensure data directory exists
-        data_dir = Path(vocabulary_file).parent
-        data_dir.mkdir(parents=True, exist_ok=True)
 
         # Load initial vocabulary
         self.vocabulary = self._load_vocabulary()

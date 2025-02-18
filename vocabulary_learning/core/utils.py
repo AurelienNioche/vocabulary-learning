@@ -1,5 +1,6 @@
 """Utility functions for text processing and other helpers."""
 
+import os
 import sys
 import unicodedata
 from difflib import SequenceMatcher
@@ -105,3 +106,15 @@ def format_time_interval(hours):
         return f"{hours}h"
     else:
         return f"{minutes}min"
+
+
+def get_data_dir() -> str:
+    """Get the OS-specific data directory for storing application data.
+
+    Returns:
+        Path to the data directory
+    """
+    if sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Application Support/VocabularyLearning")
+    else:
+        return os.path.expanduser("~/.local/share/vocabulary-learning")

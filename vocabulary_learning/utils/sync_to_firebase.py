@@ -1,17 +1,31 @@
+"""Script to sync local data with Firebase."""
+
 import json
 import os
+import sys
 from pathlib import Path
 
 import firebase_admin
 from dotenv import load_dotenv
 from firebase_admin import auth, credentials, db
 from rich.console import Console
+from rich.panel import Panel
 from rich.prompt import Confirm
+
+console = Console()
+
+
+def get_data_dir() -> str:
+    """Get the OS-specific data directory for storing application data."""
+    if sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Application Support/VocabularyLearning")
+    else:
+        return os.path.expanduser("~/.local/share/vocabulary-learning")
 
 
 def sync_to_firebase():
-    console = Console()
-    console.print("\n[bold blue]=== Starting Firebase Sync ===[/bold blue]")
+    """Sync local data with Firebase."""
+    console.print("\n=== Starting Firebase Sync ===")
 
     # Load environment variables
     load_dotenv()
@@ -30,7 +44,6 @@ def sync_to_firebase():
             app = firebase_admin.get_app()
             console.print("[dim]Using existing Firebase connection[/dim]")
         except ValueError:
-            console.print("[dim]Initializing new Firebase connection...[/dim]")
             cred = credentials.Certificate(cred_path)
             app = firebase_admin.initialize_app(
                 cred, {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")}
@@ -38,36 +51,29 @@ def sync_to_firebase():
 
         # Get user credentials
         email = os.getenv("FIREBASE_USER_EMAIL")
-        password = os.getenv("FIREBASE_USER_PASSWORD")
-
-        if not email or not password:
-            console.print("[red]Error: Firebase user credentials not found in .env file[/red]")
-            console.print(
-                "[yellow]Please set FIREBASE_USER_EMAIL and FIREBASE_USER_PASSWORD in your .env file[/yellow]"
-            )
-            return
+        if not email:
+            raise ValueError("Firebase user email not found in .env")
 
         # Get user ID
-        try:
-            user = auth.get_user_by_email(email)
-            user_id = user.uid
-            console.print(f"[dim]Authenticated as: {email}[/dim]")
-        except auth.UserNotFoundError:
-            console.print(f"[red]Error: User not found: {email}[/red]")
-            return
+        user = auth.get_user_by_email(email)
+        user_id = user.uid
+        console.print(f"[dim]Authenticated as: {email}[/dim]")
 
         # Set up database references
         vocab_ref = db.reference(f"/vocabulary/{user_id}")
         progress_ref = db.reference(f"/progress/{user_id}")
 
+        # Get data directory
+        data_dir = Path(get_data_dir()) / "data"
+
         # Read local files
         files_to_sync = {
-            "vocabulary": {"path": "vocabulary_learning/data/vocabulary.json", "ref": vocab_ref},
-            "progress": {"path": "vocabulary_learning/data/progress.json", "ref": progress_ref},
+            "vocabulary": {"path": data_dir / "vocabulary.json", "ref": vocab_ref},
+            "progress": {"path": data_dir / "progress.json", "ref": progress_ref},
         }
 
         for data_type, config in files_to_sync.items():
-            json_path = Path(config["path"])
+            json_path = config["path"]
             if not json_path.exists():
                 console.print(f"[red]Error: {json_path} not found[/red]")
                 console.print(
@@ -99,21 +105,17 @@ def sync_to_firebase():
             # Compare counts
             local_count = len(local_data)
             uploaded_count = len(uploaded_data)
-
-            if local_count != uploaded_count:
+            if local_count == uploaded_count:
                 console.print(
-                    f"[yellow]Warning: {data_type} count mismatch. Local: {local_count}, Firebase: {uploaded_count}[/yellow]"
+                    f"[green]✓ Successfully synced {local_count} {data_type} items[/green]"
                 )
-                console.print("[yellow]Please verify your data and try again if needed.[/yellow]")
             else:
                 console.print(
-                    f"[green]✓ Successfully synced {local_count} {data_type} entries to Firebase![/green]"
+                    f"[yellow]Warning: Local {data_type} count ({local_count}) differs from uploaded count ({uploaded_count})[/yellow]"
                 )
-                console.print(f"[dim]Your {data_type} is now backed up in the cloud.[/dim]")
 
     except Exception as e:
-        console.print(f"[red]Error during Firebase sync: {str(e)}[/red]")
-        console.print("[yellow]Please check your Firebase configuration and try again.[/yellow]")
+        console.print(f"[red]Error during sync: {str(e)}[/red]")
 
 
 if __name__ == "__main__":
