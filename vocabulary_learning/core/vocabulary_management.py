@@ -13,37 +13,59 @@ from vocabulary_learning.core.file_operations import save_vocabulary
 
 
 def add_vocabulary(
-    vocab_file: str,
     vocabulary: pd.DataFrame,
+    vocab_file: str,
     vocab_ref: Any,
     console: Console,
     load_vocabulary: Callable,
+    japanese_converter: Any = None,
+    vim_commands: dict = None,
 ) -> None:
     """Add new vocabulary words.
 
     Args:
-        vocab_file: Path to vocabulary file
         vocabulary: Current vocabulary DataFrame
+        vocab_file: Path to vocabulary file
         vocab_ref: Firebase reference for vocabulary
         console: Console for output
         load_vocabulary: Function to reload vocabulary
+        japanese_converter: Optional JapaneseTextConverter instance for text conversion
+        vim_commands: Dictionary of available Vim-like commands
     """
-    console.print("\nAdd New Vocabulary")
-    console.print("Enter 'q' to return to menu")
+    console.print("\n[bold blue]Add New Vocabulary[/bold blue]")
+    console.print()  # Add empty line
+    console.print("[dim]Available commands:[/dim]")
+    console.print("[blue]:m[/blue] menu • [blue]:q[/blue] quit")
+    console.print()  # Add empty line
 
     while True:
         # Get word details
         japanese = input("Japanese (hiragana): ").strip()
-        if japanese.lower() == "q":
+        if japanese.lower() == ":m":
             break
+        elif japanese.lower() == ":q":
+            raise SystemExit
+        elif not japanese:  # Skip empty input
+            continue
+
+        # Convert input to hiragana if converter is available and input is not a command
+        if japanese_converter and not japanese.startswith(":"):
+            try:
+                japanese = japanese_converter.to_hiragana(japanese)
+            except Exception as e:
+                console.print(f"[yellow]Warning: Failed to convert text: {str(e)}[/yellow]")
 
         # Check for duplicates
-        if any(vocabulary["japanese"].str.lower() == japanese.lower()):
+        if not vocabulary.empty and any(vocabulary.japanese.str.lower() == japanese.lower()):
             console.print("[red]This word already exists![/red]")
             continue
 
         kanji = input("Kanji (optional): ").strip()
         french = input("French: ").strip()
+        if not french:  # Skip if French translation is empty
+            console.print("[red]French translation is required![/red]")
+            continue
+
         example = input("Example sentence (optional): ").strip()
 
         # Load existing vocabulary
@@ -94,22 +116,26 @@ def add_vocabulary(
         # Save to file
         with open(vocab_file, "w", encoding="utf-8") as f:
             json.dump(vocab_data, f, ensure_ascii=False, indent=2)
-        console.print("Saving to local file... ", end="")
-        console.print("✓", style="green")
+        console.print("[dim]Saving to local file... ✓[/dim]")
 
         # Sync with Firebase
         if vocab_ref is not None:
             try:
                 vocab_ref.set(vocab_data)
-                console.print("Syncing with Firebase... ", end="")
-                console.print("✓", style="green")
+                console.print("[dim]Syncing with Firebase... ✓[/dim]")
             except Exception as e:
                 console.print(f"[red]Failed to sync with Firebase: {str(e)}[/red]")
 
         # Reload vocabulary
-        load_vocabulary()
+        try:
+            # Call load_vocabulary with the vocab_file and vocab_ref
+            vocabulary = load_vocabulary(vocab_file, vocab_ref, console)
+            if vocabulary is not None:
+                console.print("[dim]Vocabulary reloaded successfully[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Failed to reload vocabulary: {str(e)}[/yellow]")
 
-        console.print("✓ Word added successfully!", style="green")
+        console.print("[green]✓ Word added successfully![/green]")
 
         # Ask if user wants to add another word
         if not Confirm.ask("Add another word?"):

@@ -66,7 +66,6 @@ class VocabularyLearner:
             ":m": "return to menu",
             ":h": "show help",
             ":s": "show word statistics",
-            ":S": "show all statistics",
             ":e": "show example",
             ":d": "show answer (don't know)",
         }
@@ -98,15 +97,22 @@ class VocabularyLearner:
         # Continue with menu loop
         while True:
             self.console.print("\n[bold blue]Japanese Vocabulary Learning[/bold blue]")
-            self.console.print("\n1. Practice vocabulary")
+            self.console.print()  # Add empty line
+            self.console.print("[dim]Available commands:[/dim]")
+            self.console.print("[blue]:q[/blue] quit")
+            self.console.print()  # Add empty line
+            self.console.print("1. Practice vocabulary")
             self.console.print("2. Show progress")
             self.console.print("3. Add vocabulary")
             self.console.print("4. Reset progress")
-            self.console.print("5. Quit")
 
-            choice = input("\nEnter your choice (1-5): ")
+            choice = input("\nEnter your choice: ").strip()
 
-            if choice == "1":
+            if choice.lower() == ":q":
+                self.console.print()  # Add empty line
+                self.save_progress()
+                break
+            elif choice == "1":
                 practice_mode(
                     self.vocabulary,
                     self.progress,
@@ -125,18 +131,17 @@ class VocabularyLearner:
                 show_progress(self.vocabulary, self.progress, self.console)
             elif choice == "3":
                 add_vocabulary(
-                    self.vocabulary,
-                    self.vocab_file,
-                    self.vocab_ref,
-                    self.japanese_converter,
-                    self.console,
+                    vocabulary=self.vocabulary,
+                    vocab_file=self.vocab_file,
+                    vocab_ref=self.vocab_ref,
+                    console=self.console,
+                    load_vocabulary=load_vocabulary,
+                    japanese_converter=self.japanese_converter,
+                    vim_commands=self.vim_commands,
                 )
             elif choice == "4":
                 reset_progress(self.progress_file, self.progress_ref, self.console)
                 self.progress = {}
-            elif choice == "5":
-                self.save_progress()
-                break
             else:
                 self.console.print("[red]Invalid choice. Please try again.[/red]")
 

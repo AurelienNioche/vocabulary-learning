@@ -212,3 +212,8 @@ class JapaneseTextConverter:
         except Exception as e:
             print(f"Translation service unavailable: {str(e)}")
             return None
+
+    def to_hiragana(self, text):
+        """Convert text to hiragana."""
+        result = self.convert_japanese_text(text)
+        return result["hiragana"]

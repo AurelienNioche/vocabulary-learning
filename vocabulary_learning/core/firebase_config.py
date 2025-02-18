@@ -44,8 +44,8 @@ def initialize_firebase(console: Console, env_file: str = None):
 
         # Authenticate user
         user = auth.get_user_by_email(user_email)
-        console.print("Firebase initialized successfully!")
-        console.print(f"Authenticated as: {user.email}")
+        console.print("[dim]Firebase initialized successfully![/dim]")
+        console.print(f"[dim]Authenticated as: [green]{user.email}[/green][/dim]")
 
         # Get database references
         progress_ref = db.reference("progress")
