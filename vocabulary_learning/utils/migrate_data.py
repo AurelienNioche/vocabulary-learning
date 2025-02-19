@@ -1,130 +1,91 @@
-"""Script to migrate data to OS-specific locations."""
+"""Script to migrate data format and push to Firebase."""
 
 import json
 import os
-import shutil
 from pathlib import Path
 
+import firebase_admin
+from dotenv import load_dotenv
+from firebase_admin import credentials, db
 from rich.console import Console
-from rich.panel import Panel
-from rich.prompt import Confirm
-
-from vocabulary_learning.core.utils import get_data_dir
 
 
-def migrate_data():
-    """Migrate data from old location to new OS-specific location."""
+def migrate_data_format():
+    """Migrate data format and push to Firebase."""
     console = Console()
-    console.print(
-        Panel.fit(
-            "[bold blue]Data Migration Tool[/bold blue]\n\n"
-            "This will:\n"
-            "1. Move your data to the OS-specific location\n"
-            "2. Create backups of existing files\n"
-            "3. Update Firebase configuration",
-            title="Data Migration",
-            border_style="blue",
-        )
-    )
+    console.print("[bold blue]Starting data format migration...[/bold blue]")
 
-    # Get paths
-    old_data_dir = Path("vocabulary_learning/data")
-    old_firebase_dir = Path(".firebase")
-    old_env_file = Path(".env")
+    # Get data directory
+    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    if not data_dir.exists():
+        console.print(f"[red]Data directory not found at {data_dir}[/red]")
+        return
 
-    new_base_dir = Path(get_data_dir())
-    new_data_dir = new_base_dir / "data"
-    new_firebase_dir = new_base_dir / "firebase"
-
-    # Create new directories
-    new_data_dir.mkdir(parents=True, exist_ok=True)
-    new_firebase_dir.mkdir(parents=True, exist_ok=True)
-
-    # Function to safely copy files
-    def safe_copy(src: Path, dst: Path, file_type: str):
-        if src.exists():
-            if dst.exists():
-                # Create backup
-                backup = dst.with_suffix(f"{dst.suffix}.bak")
-                shutil.copy2(dst, backup)
-                console.print(f"[dim]Created backup of existing {file_type} at {backup}[/dim]")
-
-            # Copy file
-            shutil.copy2(src, dst)
-            console.print(f"[green]✓ Copied {file_type} to {dst}[/green]")
-            return True
-        return False
-
-    # Migrate vocabulary and progress
-    files_migrated = False
-    if old_data_dir.exists():
-        for file in old_data_dir.glob("*.json"):
-            dst = new_data_dir / file.name
-            if safe_copy(file, dst, f"{file.stem} data"):
-                files_migrated = True
-
-    # Migrate Firebase credentials
-    if old_firebase_dir.exists():
-        creds_file = old_firebase_dir / "credentials.json"
-        if safe_copy(creds_file, new_firebase_dir / "credentials.json", "Firebase credentials"):
-            files_migrated = True
-
-    # Migrate .env file
-    if old_env_file.exists():
-        # Read existing .env
-        with open(old_env_file, "r") as f:
-            env_content = f.read()
-
-        # Update Firebase credentials path
-        env_content = env_content.replace(
-            "/app/.firebase/credentials.json", "/app/firebase/credentials.json"
+    # Initialize Firebase
+    if not firebase_admin._apps:
+        load_dotenv()
+        cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIALS_PATH"))
+        firebase_admin.initialize_app(
+            cred,
+            {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")},
         )
 
-        # Write to new location
-        new_env = new_base_dir / ".env"
-        if new_env.exists():
-            backup = new_env.with_suffix(".env.bak")
-            shutil.copy2(new_env, backup)
-            console.print(f"[dim]Created backup of existing .env at {backup}[/dim]")
+    # Process progress data
+    progress_file = data_dir / "progress.json"
+    if progress_file.exists():
+        with open(progress_file, "r") as f:
+            progress_data = json.load(f)
 
-        with open(new_env, "w") as f:
-            f.write(env_content)
-        console.print(f"[green]✓ Migrated .env file to {new_env}[/green]")
-        files_migrated = True
+        # Convert progress data format
+        new_progress_data = {}
+        for word_id, word_data in progress_data.items():
+            if word_id.startswith("word_"):
+                new_id = word_id.split("word_")[1]  # Already in leading zeros format
+                new_progress_data[new_id] = word_data
+            else:
+                new_progress_data[word_id] = word_data
 
-    if files_migrated:
+        # Save locally
+        with open(progress_file, "w") as f:
+            json.dump(new_progress_data, f, indent=2)
         console.print(
-            Panel.fit(
-                "[bold green]Migration completed successfully![/bold green]\n"
-                f"Your data has been moved to: {new_base_dir}\n\n"
-                "The following locations are now used:\n"
-                f"- Vocabulary and progress: {new_data_dir}\n"
-                f"- Firebase credentials: {new_firebase_dir}\n"
-                f"- Environment config: {new_base_dir / '.env'}\n\n"
-                "You can now safely remove the old files if you wish.",
-                title="✓ Success",
-                border_style="green",
-            )
+            f"[green]✓ Updated local progress data ({len(new_progress_data)} records)[/green]"
         )
 
-        if Confirm.ask("Would you like to remove the old files?"):
-            try:
-                if old_data_dir.exists():
-                    shutil.rmtree(old_data_dir.parent)
-                    console.print("[green]✓ Removed old data directory[/green]")
-                if old_firebase_dir.exists():
-                    shutil.rmtree(old_firebase_dir)
-                    console.print("[green]✓ Removed old Firebase directory[/green]")
-                if old_env_file.exists():
-                    old_env_file.unlink()
-                    console.print("[green]✓ Removed old .env file[/green]")
-            except Exception as e:
-                console.print(
-                    f"[yellow]Warning: Could not remove some old files: {str(e)}[/yellow]"
-                )
-    else:
-        console.print("[yellow]No files found to migrate.[/yellow]")
+        # Push to Firebase
+        progress_ref = db.reference("progress")
+        progress_ref.set(new_progress_data)
+        console.print("[green]✓ Pushed progress data to Firebase[/green]")
+
+    # Process vocabulary data
+    vocab_file = data_dir / "vocabulary.json"
+    if vocab_file.exists():
+        with open(vocab_file, "r") as f:
+            vocab_data = json.load(f)
+
+        # Convert vocabulary data format
+        new_vocab_data = {}
+        for word_id, word_data in vocab_data.items():
+            if word_id.startswith("word_"):
+                new_id = word_id.split("word_")[1]  # Already in leading zeros format
+                new_vocab_data[new_id] = word_data
+            else:
+                new_vocab_data[word_id] = word_data
+
+        # Save locally
+        with open(vocab_file, "w") as f:
+            json.dump(new_vocab_data, f, indent=2)
+        console.print(
+            f"[green]✓ Updated local vocabulary data ({len(new_vocab_data)} records)[/green]"
+        )
+
+        # Push to Firebase
+        vocab_ref = db.reference("vocabulary")
+        vocab_ref.set(new_vocab_data)
+        console.print("[green]✓ Pushed vocabulary data to Firebase[/green]")
+
+    console.print("\n[bold green]Migration complete![/bold green]")
 
 
 if __name__ == "__main__":
-    migrate_data()
+    migrate_data_format()

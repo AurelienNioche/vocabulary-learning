@@ -23,6 +23,7 @@ dependencies = [
     "pykakasi>=2.2.1",
     "Levenshtein>=0.21.1",
     "httpx>=0.25.0",
+    "deep-translator>=1.11.4",
 ]
 
 [project.urls]
@@ -30,7 +31,11 @@ dependencies = [
 "Bug Tracker" = "https://github.com/AurelienNioche/vocabulary-learning/issues"
 
 [project.scripts]
-vocabulary-learning = "vocabulary_learning.main:main"
+vocab = "vocabulary_learning.main:main"
+fix-progress = "vocabulary_learning.utils.fix_progress:fix_progress"
+fix-duplicates = "vocabulary_learning.utils.fix_duplicates:fix_duplicates"
+sync-to-firebase = "vocabulary_learning.utils.sync_to_firebase:sync_to_firebase"
+fix-translations = "vocabulary_learning.utils.fix_translations:fix_translations"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

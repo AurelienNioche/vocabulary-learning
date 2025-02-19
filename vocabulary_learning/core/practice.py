@@ -37,7 +37,12 @@ except pytz.exceptions.UnknownTimeZoneError:
 
 
 def format_datetime(dt_str):
-    """Format datetime string with timezone support."""
+    """Format datetime string with timezone support.
+
+    Converts UTC datetime to local timezone and formats it in a human-readable way.
+    For recent dates, uses relative formatting (e.g., "Today at 14:30", "Yesterday at 09:15").
+    For older dates, uses absolute formatting with the local timezone.
+    """
     load_dotenv()
     timezone_str = os.getenv("TIMEZONE", "Europe/Helsinki")
     timezone = pytz.timezone(timezone_str)
@@ -46,9 +51,22 @@ def format_datetime(dt_str):
         dt = datetime.fromisoformat(dt_str)
         # All timestamps in progress.json are in UTC
         utc_dt = pytz.utc.localize(dt) if dt.tzinfo is None else dt.astimezone(pytz.UTC)
-        # Convert to local timezone (Helsinki)
+        # Convert to local timezone
         local_dt = utc_dt.astimezone(timezone)
-        return local_dt.strftime("%Y-%m-%d %H:%M")
+        now = datetime.now(timezone)
+
+        # Calculate the date difference
+        date_diff = (now.date() - local_dt.date()).days
+
+        # Format based on how recent the date is
+        if date_diff == 0:
+            return f"Today at {local_dt.strftime('%H:%M')} ({timezone_str})"
+        elif date_diff == 1:
+            return f"Yesterday at {local_dt.strftime('%H:%M')} ({timezone_str})"
+        elif date_diff < 7:
+            return f"{local_dt.strftime('%A')} at {local_dt.strftime('%H:%M')} ({timezone_str})"
+        else:
+            return f"{local_dt.strftime('%Y-%m-%d %H:%M')} ({timezone_str})"
     except Exception as e:
         print(f"Error formatting datetime: {e}")
         return dt_str
@@ -124,7 +142,7 @@ def practice_mode(
 
         # Get word ID for progress tracking
         word_index = vocabulary[vocabulary["japanese"] == japanese].index[0]
-        word_id = f"word_{str(word_index+1).zfill(6)}"
+        word_id = str(word_index + 1).zfill(6)
 
         # Track if this is the first attempt for progress tracking
         first_attempt = True
@@ -187,7 +205,9 @@ def practice_mode(
                                 )
                                 last_seen = format_datetime(word_data["last_seen"])
 
-                                console.print(f"\n[dim]New stats for word {japanese}:[/dim]")
+                                console.print(f"\n[dim]New stats for {japanese} [{word_id}]:[/dim]")
+                                priority = calculate_priority(word_data, active_count)
+                                console.print(f"[dim]- priority: {priority:.1f}[/dim]")
                                 console.print(
                                     f"[dim]- success rate: {success_rate:.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
                                 )
@@ -233,7 +253,9 @@ def practice_mode(
                         )
                         last_seen = format_datetime(word_data["last_seen"])
 
-                        console.print(f"\n[dim]New stats for word {japanese}:[/dim]")
+                        console.print(f"\n[dim]New stats for {japanese} [{word_id}]:[/dim]")
+                        priority = calculate_priority(word_data, active_count)
+                        console.print(f"[dim]- priority: {priority:.1f}[/dim]")
                         console.print(
                             f"[dim]- success rate: {success_rate:.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
                         )
@@ -269,7 +291,9 @@ def practice_mode(
                         )
                         last_seen = format_datetime(word_data["last_seen"])
 
-                        console.print(f"\n[dim]New stats for word {japanese}:[/dim]")
+                        console.print(f"\n[dim]New stats for {japanese} [{word_id}]:[/dim]")
+                        priority = calculate_priority(word_data, active_count)
+                        console.print(f"[dim]- priority: {priority:.1f}[/dim]")
                         console.print(
                             f"[dim]- success rate: {success_rate:.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
                         )
@@ -347,7 +371,7 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
     progress_word_ids = set(progress.keys())
     new_words = vocabulary[
         ~vocabulary.index.isin(
-            [i for i in range(len(vocabulary)) if f"word_{str(i+1).zfill(6)}" in progress_word_ids]
+            [i for i in range(len(vocabulary)) if str(i + 1).zfill(6) in progress_word_ids]
         )
     ]
 
@@ -361,7 +385,7 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
     # select a new word if available
     if not priorities and not new_words.empty:
         selected_word = new_words.iloc[0]
-        console.print(f"\n[dim]Selecting word {selected_word['japanese']}[/dim]")
+        console.print(f"\n[dim]Selecting {selected_word['japanese']} [{selected_word.name}][/dim]")
         console.print("[dim]- priority: 0.8 (new word)[/dim]")
         console.print("[dim]- success rate: 0% (0/0)[/dim]")
         console.print("[dim]- easiness factor: 2.5[/dim]")
@@ -378,21 +402,23 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
         word_data = progress[word_id]
 
         # Find corresponding word in vocabulary
-        word_index = int(word_id.split("_")[1]) - 1
+        word_index = int(word_id) - 1
         selected_word = vocabulary.iloc[word_index]
 
         # Print selection details
-        console.print(f"\n[dim]Selecting word {selected_word['japanese']}[/dim]")
+        console.print(f"\n[dim]Selecting {selected_word['japanese']} [{word_id}][/dim]")
         console.print(f"[dim]- priority: {priority:.1f}[/dim]")
         console.print(
             f"[dim]- success rate: {(word_data['successes'] / word_data['attempts'] * 100):.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
         )
         console.print(f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]")
-        console.print(f"[dim]- optimal interval: {word_data['interval']} hours[/dim]")
+        console.print(
+            f"[dim]- optimal interval: {format_time_interval(word_data['interval'])}[/dim]"
+        )
         console.print(
             f"[dim]- last attempt was a success: {'No' if word_data['last_attempt_was_failure'] else 'Yes'}[/dim]"
         )
-        console.print(f"[dim]- last presented: {word_data['last_seen']}[/dim]")
+        console.print(f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]")
 
         return selected_word
 

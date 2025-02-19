@@ -14,6 +14,14 @@ class TestPractice(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.console = Console(force_terminal=True)
+        self.mock_converter = MagicMock()
+        self.mock_converter.kks.convert.return_value = [{"hira": "ひらがな"}]
+        self.mock_update_progress = MagicMock()
+        self.mock_show_help = MagicMock()
+        self.mock_show_stats = MagicMock()
+        self.mock_save_progress = MagicMock()
+
+        # Create test vocabulary
         self.vocabulary = pd.DataFrame(
             [
                 {
@@ -30,40 +38,35 @@ class TestPractice(unittest.TestCase):
                 },
             ]
         )
+
+        # Create test progress data
         self.progress = {
-            "word_000001": {
-                "attempts": 10,
-                "successes": 8,
-                "interval": 24,
-                "last_attempt_was_failure": False,
-                "last_seen": datetime.now().isoformat(),
-                "review_intervals": [1, 4, 24],
-                "easiness_factor": 2.5,
-            },
-            "word_000002": {
+            "000001": {
                 "attempts": 5,
                 "successes": 2,
-                "interval": 4,
-                "last_attempt_was_failure": True,
-                "last_seen": datetime.now().isoformat(),
+                "last_seen": "2024-02-10T12:00:00",
                 "review_intervals": [1, 4],
-                "easiness_factor": 2.3,
+                "last_attempt_was_failure": False,
+                "interval": 4,
+                "easiness_factor": 2.5,
+            },
+            "000002": {
+                "attempts": 3,
+                "successes": 1,
+                "last_seen": "2024-02-11T12:00:00",
+                "review_intervals": [1],
+                "last_attempt_was_failure": True,
+                "interval": 1,
+                "easiness_factor": 2.5,
             },
         }
-
-        # Mock functions
-        self.mock_update_progress = MagicMock()
-        self.mock_show_help = MagicMock()
-        self.mock_show_stats = MagicMock()
-        self.mock_save_progress = MagicMock()
-        self.mock_converter = MagicMock()
 
     def test_select_word_new_word(self):
         """Test word selection prioritizing new words."""
         # Create a fresh progress with a word that's not due (future date)
         # and has a success rate below mastery
         progress = {
-            "word_000001": {
+            "000001": {
                 "attempts": 10,
                 "successes": 9,  # 90% success rate to be considered mastered
                 "last_seen": "2025-02-11T12:00:00",  # Future date to ensure it's not due
@@ -83,7 +86,7 @@ class TestPractice(unittest.TestCase):
         # Add more active words to reach the limit
         progress = self.progress.copy()
         for i in range(8):
-            progress[f"word_{str(i+1).zfill(6)}"] = {
+            progress[str(i + 1).zfill(6)] = {
                 "attempts": 5,
                 "successes": 2,
                 "last_seen": "2024-02-11T12:00:00",
@@ -132,7 +135,7 @@ class TestPractice(unittest.TestCase):
         # Create a progress dictionary with 8 mastered words
         progress = {}
         for i in range(8):
-            progress[f"word_{str(i+1).zfill(6)}"] = {
+            progress[str(i + 1).zfill(6)] = {
                 "attempts": 10,
                 "successes": 9,  # 90% success rate
                 "last_seen": "2024-02-11T12:00:00",
@@ -236,7 +239,7 @@ class TestPractice(unittest.TestCase):
         """Test practice mode with correct answer."""
         # Use a progress dictionary that won't prioritize failed words
         progress = {
-            "word_000002": {
+            "000002": {
                 "attempts": 5,
                 "successes": 2,
                 "last_seen": "2024-02-10T12:00:00",

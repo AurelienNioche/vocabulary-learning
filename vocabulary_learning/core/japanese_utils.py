@@ -1,13 +1,13 @@
 """Japanese text utilities for handling different writing systems."""
 
 import pykakasi
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 
 class JapaneseTextConverter:
     def __init__(self):
         self.kks = pykakasi.kakasi()
-        self.translator = Translator()
+        self.translator = GoogleTranslator(source="ja", target="en")
 
         # Common romaji to hiragana mappings
         self.romaji_to_hiragana = {
@@ -187,9 +187,7 @@ class JapaneseTextConverter:
             else:
                 # Try to get kanji suggestion from translator
                 try:
-                    kanji_suggestion = self.translator.translate(
-                        conversions["hiragana"], src="ja", dest="ja"
-                    ).text
+                    kanji_suggestion = self.translator.translate(text=conversions["hiragana"])
                     if any(
                         ord(char) >= 0x4E00 and ord(char) <= 0x9FFF for char in kanji_suggestion
                     ):

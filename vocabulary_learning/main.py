@@ -78,6 +78,9 @@ class VocabularyLearner:
 
     def run(self):
         """Run the main program loop."""
+        # Show data directory location
+        self.console.print(f"\n[dim]Data directory: {Path(get_data_dir())}[/dim]")
+
         # Start directly in practice mode
         practice_mode(
             self.vocabulary,
