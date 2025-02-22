@@ -58,7 +58,7 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
 4. **Word Mastery Criteria**:
    - A word is considered mastered when:
      - It has at least 5 successful reviews total
-     - It maintains a weighted success rate of 90% or higher
+     - It maintains a weighted success rate of 80% or higher
    - Success rate calculation uses temporal decay:
      - Recent attempts have more weight than older ones
      - 30-day half-life (attempts from 30 days ago have half the weight)

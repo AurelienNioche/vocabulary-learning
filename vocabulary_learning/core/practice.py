@@ -13,6 +13,7 @@ from rich.prompt import Confirm
 
 from vocabulary_learning.core.progress_tracking import (
     calculate_priority,
+    calculate_weighted_success_rate,
     count_active_learning_words,
     is_mastered,
 )
@@ -189,36 +190,9 @@ def practice_mode(
                         if first_attempt:
                             update_progress_fn(word_id, False)
                             if word_id in progress:
-                                word_data = progress[word_id]
-                                success_rate = (
-                                    (word_data["successes"] / word_data["attempts"] * 100)
-                                    if word_data["attempts"] > 0
-                                    else 0
+                                display_updated_stats(
+                                    progress[word_id], japanese, word_id, active_count, console
                                 )
-                                interval_text = format_time_interval(word_data["interval"])
-                                last_attempt_text = (
-                                    "N/A"
-                                    if word_data["attempts"] == 0
-                                    else (
-                                        "yes" if not word_data["last_attempt_was_failure"] else "no"
-                                    )
-                                )
-                                last_seen = format_datetime(word_data["last_seen"])
-
-                                console.print(f"\n[dim]New stats for {japanese} [{word_id}]:[/dim]")
-                                priority = calculate_priority(word_data, active_count)
-                                console.print(f"[dim]- priority: {priority:.1f}[/dim]")
-                                console.print(
-                                    f"[dim]- success rate: {success_rate:.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
-                                )
-                                console.print(
-                                    f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]"
-                                )
-                                console.print(f"[dim]- optimal interval: {interval_text}[/dim]")
-                                console.print(
-                                    f"[dim]- last attempt was a success: {last_attempt_text}[/dim]"
-                                )
-                                console.print(f"[dim]- last presented: {last_seen}[/dim]")
 
                         console.print("\n[yellow]Let's try again![/yellow]")
                         first_attempt = False
@@ -238,35 +212,9 @@ def practice_mode(
                     got_it_right = True
                     # Show updated stats
                     if first_attempt and word_id in progress:
-                        word_data = progress[word_id]
-                        success_rate = (
-                            (word_data["successes"] / word_data["attempts"] * 100)
-                            if word_data["attempts"] > 0
-                            else 0
+                        display_updated_stats(
+                            progress[word_id], japanese, word_id, active_count, console
                         )
-                        # Format the interval text first
-                        interval_text = format_time_interval(word_data["interval"])
-                        last_attempt_text = (
-                            "N/A"
-                            if word_data["attempts"] == 0
-                            else "yes" if not word_data["last_attempt_was_failure"] else "no"
-                        )
-                        last_seen = format_datetime(word_data["last_seen"])
-
-                        console.print(f"\n[dim]New stats for {japanese} [{word_id}]:[/dim]")
-                        priority = calculate_priority(word_data, active_count)
-                        console.print(f"[dim]- priority: {priority:.1f}[/dim]")
-                        console.print(
-                            f"[dim]- success rate: {success_rate:.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
-                        )
-                        console.print(
-                            f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]"
-                        )
-                        console.print(f"[dim]- optimal interval: {interval_text}[/dim]")
-                        console.print(
-                            f"[dim]- last attempt was a success: {last_attempt_text}[/dim]"
-                        )
-                        console.print(f"[dim]- last presented: {last_seen}[/dim]")
                     break
                 else:
                     show_answer_feedback(console, answer, False, message)
@@ -276,35 +224,9 @@ def practice_mode(
                         update_progress_if_first_attempt(
                             update_progress_fn, word_id, False, first_attempt
                         )
-                        word_data = progress[word_id]
-                        success_rate = (
-                            (word_data["successes"] / word_data["attempts"] * 100)
-                            if word_data["attempts"] > 0
-                            else 0
+                        display_updated_stats(
+                            progress[word_id], japanese, word_id, active_count, console
                         )
-                        # Format the interval text first
-                        interval_text = format_time_interval(word_data["interval"])
-                        last_attempt_text = (
-                            "N/A"
-                            if word_data["attempts"] == 0
-                            else "yes" if not word_data["last_attempt_was_failure"] else "no"
-                        )
-                        last_seen = format_datetime(word_data["last_seen"])
-
-                        console.print(f"\n[dim]New stats for {japanese} [{word_id}]:[/dim]")
-                        priority = calculate_priority(word_data, active_count)
-                        console.print(f"[dim]- priority: {priority:.1f}[/dim]")
-                        console.print(
-                            f"[dim]- success rate: {success_rate:.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
-                        )
-                        console.print(
-                            f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]"
-                        )
-                        console.print(f"[dim]- optimal interval: {interval_text}[/dim]")
-                        console.print(
-                            f"[dim]- last attempt was a success: {last_attempt_text}[/dim]"
-                        )
-                        console.print(f"[dim]- last presented: {last_seen}[/dim]")
                     else:
                         update_progress_if_first_attempt(
                             update_progress_fn, word_id, False, first_attempt
@@ -392,6 +314,7 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
         console.print("[dim]- optimal interval: as soon as possible[/dim]")
         console.print("[dim]- last attempt was a success: N/A[/dim]")
         console.print("[dim]- last presented: never[/dim]")
+        console.print("[dim]- mastery status: Not started[/dim]")
         return selected_word
 
     # If there are words in progress, select based on priority
@@ -404,6 +327,19 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
         # Find corresponding word in vocabulary
         word_index = int(word_id) - 1
         selected_word = vocabulary.iloc[word_index]
+
+        # Calculate mastery criteria
+        successes = word_data.get("successes", 0)
+        weighted_success_rate = calculate_weighted_success_rate(
+            word_data.get("attempt_history", [])
+        )
+        mastery_status = []
+        if successes < 5:
+            mastery_status.append("needs more successful reviews (minimum 5)")
+        if weighted_success_rate < 0.8:
+            mastery_status.append(
+                f"needs higher success rate (current: {weighted_success_rate:.1%})"
+            )
 
         # Print selection details
         console.print(f"\n[dim]Selecting {selected_word['japanese']} [{word_id}][/dim]")
@@ -419,6 +355,7 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
             f"[dim]- last attempt was a success: {'No' if word_data['last_attempt_was_failure'] else 'Yes'}[/dim]"
         )
         console.print(f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]")
+        console.print(f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]")
 
         return selected_word
 
@@ -484,3 +421,48 @@ def display_word_stats(word_data, console):
         console.print(f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]")
     else:
         console.print("[dim]- last presented: never[/dim]")
+
+
+def display_updated_stats(
+    word_data: Dict, japanese: str, word_id: str, active_count: int, console: Console
+) -> None:
+    """Display updated statistics for a word after an attempt.
+
+    Args:
+        word_data: Dictionary containing word progress data
+        japanese: Japanese word being practiced
+        word_id: ID of the word
+        active_count: Number of active words
+        console: Rich console for output
+    """
+    success_rate = (
+        (word_data["successes"] / word_data["attempts"] * 100) if word_data["attempts"] > 0 else 0
+    )
+    interval_text = format_time_interval(word_data["interval"])
+    last_attempt_text = (
+        "N/A"
+        if word_data["attempts"] == 0
+        else "yes" if not word_data["last_attempt_was_failure"] else "no"
+    )
+    last_seen = format_datetime(word_data["last_seen"])
+
+    console.print(f"\n[dim]New stats for {japanese} [{word_id}]:[/dim]")
+    priority = calculate_priority(word_data, active_count)
+    console.print(f"[dim]- priority: {priority:.1f}[/dim]")
+    console.print(
+        f"[dim]- success rate: {success_rate:.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
+    )
+    console.print(f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]")
+    console.print(f"[dim]- optimal interval: {interval_text}[/dim]")
+    console.print(f"[dim]- last attempt was a success: {last_attempt_text}[/dim]")
+    console.print(f"[dim]- last presented: {last_seen}[/dim]")
+
+    # Add mastery status
+    successes = word_data.get("successes", 0)
+    weighted_success_rate = calculate_weighted_success_rate(word_data.get("attempt_history", []))
+    mastery_status = []
+    if successes < 5:
+        mastery_status.append("needs more successful reviews (minimum 5)")
+    if weighted_success_rate < 0.8:
+        mastery_status.append(f"needs higher success rate (current: {weighted_success_rate:.1%})")
+    console.print(f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]")

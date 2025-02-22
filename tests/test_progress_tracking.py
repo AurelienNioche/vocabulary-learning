@@ -181,15 +181,16 @@ class TestProgressTracking(unittest.TestCase):
                     for i in range(1, 10)
                 ],
             },
-            "word_000002": {  # Active word with mixed recent performance
+            "word_000002": {  # Active word with mixed recent performance (below 80% success rate)
                 "attempts": 10,
                 "successes": 7,
                 "attempt_history": [
                     {"timestamp": (now - timedelta(hours=1)).isoformat(), "success": False},
-                    {"timestamp": (now - timedelta(hours=2)).isoformat(), "success": True},
+                    {"timestamp": (now - timedelta(hours=2)).isoformat(), "success": False},
+                    {"timestamp": (now - timedelta(hours=3)).isoformat(), "success": False},
                     *[
                         {"timestamp": (now - timedelta(days=i)).isoformat(), "success": True}
-                        for i in range(1, 7)
+                        for i in range(1, 8)
                     ],
                 ],
             },

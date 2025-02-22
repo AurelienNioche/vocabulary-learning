@@ -186,7 +186,7 @@ def is_mastered(word_data: Dict) -> bool:
 
     A word is considered mastered if:
     1. It has at least 5 successful reviews total
-    2. It has a weighted success rate of at least 90%, with more recent attempts weighted more heavily
+    2. It has a weighted success rate of at least 80%, with more recent attempts weighted more heavily
 
     Args:
         word_data: Dictionary containing word progress data
@@ -204,9 +204,9 @@ def is_mastered(word_data: Dict) -> bool:
     if successes < 5:
         return False
 
-    # Second criterion: 90% weighted success rate
+    # Second criterion: 80% weighted success rate
     weighted_success_rate = calculate_weighted_success_rate(attempt_history)
-    return weighted_success_rate >= 0.9
+    return weighted_success_rate >= 0.8
 
 
 def count_active_learning_words(progress_data: Dict) -> int:

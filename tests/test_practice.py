@@ -1,10 +1,11 @@
 """Unit tests for practice mode functionality."""
 
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytz
 from rich.console import Console
 
 from vocabulary_learning.core.practice import check_answer, practice_mode, select_word
@@ -65,6 +66,7 @@ class TestPractice(unittest.TestCase):
         """Test word selection prioritizing new words."""
         # Create a fresh progress with a word that's not due (future date)
         # and has a success rate below mastery
+        now = datetime.now(pytz.UTC)
         progress = {
             "000001": {
                 "attempts": 10,
@@ -74,6 +76,10 @@ class TestPractice(unittest.TestCase):
                 "last_attempt_was_failure": False,
                 "interval": 24,
                 "easiness_factor": 2.5,
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    for i in range(1, 10)
+                ],
             }
         }
         # Since the word in progress is mastered, it should be skipped
@@ -133,6 +139,7 @@ class TestPractice(unittest.TestCase):
     def test_new_words_suggested_after_mastery(self):
         """Test that new words are suggested when words are mastered."""
         # Create a progress dictionary with 8 mastered words
+        now = datetime.now(pytz.UTC)
         progress = {}
         for i in range(8):
             progress[str(i + 1).zfill(6)] = {
@@ -143,6 +150,10 @@ class TestPractice(unittest.TestCase):
                 "last_attempt_was_failure": False,
                 "review_intervals": [1, 4, 24],
                 "easiness_factor": 2.5,
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    for i in range(1, 10)
+                ],
             }
 
         # Create a vocabulary with the mastered words plus some new ones
@@ -177,6 +188,7 @@ class TestPractice(unittest.TestCase):
         """Test the criteria for considering a word mastered."""
         from vocabulary_learning.core.progress_tracking import count_active_learning_words
 
+        now = datetime.now(pytz.UTC)
         progress = {
             # Word with high success rate but not enough attempts
             "word_1": {
@@ -184,6 +196,10 @@ class TestPractice(unittest.TestCase):
                 "successes": 4,  # 100% but only 4 successes
                 "last_seen": "2024-02-11T12:00:00",
                 "interval": 0.0333,  # 2 minutes
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    for i in range(1, 5)
+                ],
             },
             # Word with enough attempts but low success rate
             "word_2": {
@@ -191,6 +207,10 @@ class TestPractice(unittest.TestCase):
                 "successes": 8,  # 80% success rate
                 "last_seen": "2024-02-11T12:00:00",
                 "interval": 24,  # 1 day
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i > 2}
+                    for i in range(1, 11)
+                ],
             },
             # Word that meets mastery criteria
             "word_3": {
@@ -198,6 +218,10 @@ class TestPractice(unittest.TestCase):
                 "successes": 9,  # 90% success rate
                 "last_seen": "2024-02-11T12:00:00",
                 "interval": 48,  # 2 days
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    for i in range(1, 10)
+                ],
             },
             # Word that exceeds mastery criteria
             "word_4": {
@@ -205,6 +229,10 @@ class TestPractice(unittest.TestCase):
                 "successes": 14,  # 93% success rate
                 "last_seen": "2024-02-11T12:00:00",
                 "interval": 96,  # 4 days
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    for i in range(1, 15)
+                ],
             },
         }
 
