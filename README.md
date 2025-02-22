@@ -14,7 +14,7 @@ A command-line tool for learning Japanese vocabulary with spaced repetition and 
 - Advanced spaced repetition system (based on SuperMemo 2)
 - Progress tracking and statistics
 - Smart word selection algorithm
-- Word mastery tracking
+- Temporal decay-based word mastery tracking
 
 ### Cloud Integration
 - Firebase integration for data backup
@@ -57,8 +57,17 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
 
 4. **Word Mastery Criteria**:
    - A word is considered mastered when:
-     - It has at least 5 successful reviews
-     - It maintains a success rate of 90% or higher
+     - It has at least 5 successful reviews total
+     - It maintains a weighted success rate of 90% or higher
+   - Success rate calculation uses temporal decay:
+     - Recent attempts have more weight than older ones
+     - 30-day half-life (attempts from 30 days ago have half the weight)
+     - Exponential decay function: weight = e^(-λt)
+   - This means:
+     - Recent performance matters more than historical performance
+     - A word can lose mastery status if recent performance drops
+     - Old failures gradually "fade away" in importance
+     - Very recent failures have strong impact on mastery status
    - Mastered words are excluded from regular review
    - System focuses on words still being learned
 
