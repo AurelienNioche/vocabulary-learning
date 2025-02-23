@@ -65,6 +65,41 @@ class TestProgressTracking(unittest.TestCase):
         self.assertGreater(rate, 0.5)  # Should be high due to recent successes
         self.assertLess(rate, 1.0)  # But not perfect due to the week-old failure
 
+    def test_attempt_history_tracking(self):
+        """Test that attempt history is properly tracked in progress updates."""
+        progress = {}
+        save_called = False
+
+        def mock_save_callback():
+            nonlocal save_called
+            save_called = True
+
+        # First attempt (success)
+        word_id = "word_000001"
+        update_progress(word_id, True, progress, mock_save_callback)
+
+        # Verify attempt history was initialized and updated
+        self.assertIn("attempt_history", progress[word_id])
+        self.assertEqual(len(progress[word_id]["attempt_history"]), 1)
+        self.assertTrue(progress[word_id]["attempt_history"][0]["success"])
+
+        # Second attempt (failure)
+        update_progress(word_id, False, progress, mock_save_callback)
+
+        # Verify attempt history was updated
+        self.assertEqual(len(progress[word_id]["attempt_history"]), 2)
+        self.assertFalse(progress[word_id]["attempt_history"][1]["success"])
+
+        # Verify basic stats are correct
+        self.assertEqual(progress[word_id]["attempts"], 2)
+        self.assertEqual(progress[word_id]["successes"], 1)
+
+        # Calculate weighted success rate
+        rate = calculate_weighted_success_rate(progress[word_id]["attempt_history"])
+
+        # Recent failure should weigh more than older success
+        self.assertLess(rate, 0.5)
+
     def test_mastery_criteria_with_decay(self):
         """Test mastery criteria with temporal decay."""
         now = datetime.now(pytz.UTC)

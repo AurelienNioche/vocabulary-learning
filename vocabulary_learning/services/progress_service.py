@@ -93,6 +93,7 @@ class ProgressService(BaseService):
                 "last_attempt_was_failure": False,
                 "easiness_factor": 2.5,
                 "interval": 0,
+                "attempt_history": [],  # Initialize attempt history
             }
         elif "interval" not in self.progress[word_id]:
             # Add interval if missing in existing progress data
@@ -116,6 +117,14 @@ class ProgressService(BaseService):
             ]
 
         self.progress[word_id]["attempts"] += 1
+
+        # Add attempt to history
+        if "attempt_history" not in self.progress[word_id]:
+            self.progress[word_id]["attempt_history"] = []
+        self.progress[word_id]["attempt_history"].append(
+            {"timestamp": datetime.now().isoformat(), "success": success}
+        )
+
         if success:
             self.progress[word_id]["successes"] += 1
             # Update SuperMemo 2 parameters

@@ -344,8 +344,16 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
         # Print selection details
         console.print(f"\n[dim]Selecting {selected_word['japanese']} [{word_id}][/dim]")
         console.print(f"[dim]- priority: {priority:.1f}[/dim]")
+        raw_success_rate = (
+            (word_data["successes"] / word_data["attempts"] * 100)
+            if word_data["attempts"] > 0
+            else 0
+        )
+        weighted_success_rate = (
+            calculate_weighted_success_rate(word_data.get("attempt_history", [])) * 100
+        )
         console.print(
-            f"[dim]- success rate: {(word_data['successes'] / word_data['attempts'] * 100):.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
+            f"[dim]- success rate: {raw_success_rate:.0f}% raw, {weighted_success_rate:.0f}% weighted ({word_data['successes']}/{word_data['attempts']})[/dim]"
         )
         console.print(f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]")
         console.print(
@@ -355,7 +363,12 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
             f"[dim]- last attempt was a success: {'No' if word_data['last_attempt_was_failure'] else 'Yes'}[/dim]"
         )
         console.print(f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]")
-        console.print(f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]")
+        if not mastery_status:  # If no criteria are failing
+            console.print(f"[dim]- mastery status: [green]Mastered![/green][/dim]")
+        else:
+            console.print(
+                f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]"
+            )
 
         return selected_word
 
@@ -435,8 +448,11 @@ def display_updated_stats(
         active_count: Number of active words
         console: Rich console for output
     """
-    success_rate = (
+    raw_success_rate = (
         (word_data["successes"] / word_data["attempts"] * 100) if word_data["attempts"] > 0 else 0
+    )
+    weighted_success_rate = (
+        calculate_weighted_success_rate(word_data.get("attempt_history", [])) * 100
     )
     interval_text = format_time_interval(word_data["interval"])
     last_attempt_text = (
@@ -450,7 +466,7 @@ def display_updated_stats(
     priority = calculate_priority(word_data, active_count)
     console.print(f"[dim]- priority: {priority:.1f}[/dim]")
     console.print(
-        f"[dim]- success rate: {success_rate:.0f}% ({word_data['successes']}/{word_data['attempts']})[/dim]"
+        f"[dim]- success rate: {raw_success_rate:.0f}% raw, {weighted_success_rate:.0f}% weighted ({word_data['successes']}/{word_data['attempts']})[/dim]"
     )
     console.print(f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]")
     console.print(f"[dim]- optimal interval: {interval_text}[/dim]")
@@ -465,4 +481,8 @@ def display_updated_stats(
         mastery_status.append("needs more successful reviews (minimum 5)")
     if weighted_success_rate < 0.8:
         mastery_status.append(f"needs higher success rate (current: {weighted_success_rate:.1%})")
-    console.print(f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]")
+
+    if not mastery_status:  # If no criteria are failing
+        console.print(f"[dim]- mastery status: [green]Mastered![/green][/dim]")
+    else:
+        console.print(f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]")
