@@ -7,7 +7,8 @@ from typing import Optional
 
 from rich.console import Console
 
-from vocabulary_learning.core.utils import get_data_dir
+from vocabulary_learning.core.constants import ENV_FILE
+from vocabulary_learning.core.paths import get_data_dir
 
 
 class BaseService:
@@ -68,4 +69,4 @@ class BaseService:
         Returns:
             Path to the .env file
         """
-        return self.data_dir / ".env"
+        return self.data_dir / ENV_FILE

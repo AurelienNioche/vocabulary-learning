@@ -16,6 +16,8 @@ FAILED_WORD_PRIORITY_BONUS = 0.3
 
 # Time and Date Constants
 DEFAULT_TIMEZONE = "Europe/Helsinki"
+HALF_LIFE_DAYS = 30.0  # Number of days after which weight is halved
+DECAY_RATE = 0.693 / (HALF_LIFE_DAYS * 24)  # ln(2) / (half_life in hours)
 
 # File System Constants
 DATA_DIR_NAME = "VocabularyLearning"
@@ -31,6 +33,38 @@ FIREBASE_PATHS = {
 # UI Constants
 MAX_REVIEW_INTERVALS_HISTORY = 10
 DEFAULT_PRACTICE_WORDS = 10
+SUCCESS_MARK = "[green]✓[/green]"
+FAILURE_MARK = "[red]✗[/red]"
+
+# Vim-like Commands
+VIM_COMMANDS = {
+    ":q": "quit program",
+    ":m": "return to menu",
+    ":h": "show help",
+    ":s": "show word statistics",
+    ":S": "show all statistics",
+    ":e": "show example sentence",
+    ":d": "don't know (show answer)",
+}
+
+# Data Validation Constants
+REQUIRED_VOCABULARY_COLUMNS = ["japanese", "kanji", "french", "example_sentence"]
+REQUIRED_PROGRESS_FIELDS = [
+    "attempts",
+    "successes",
+    "interval",
+    "last_attempt_was_failure",
+    "last_seen",
+    "review_intervals",
+    "easiness_factor",
+]
+
+# Text Processing Constants
+TYPO_SIMILARITY_THRESHOLD = 0.85  # Threshold for considering a typo vs a different word
+
+# Word ID Format Constants
+WORD_ID_DIGITS = 6  # Number of digits in word ID (e.g., "000001")
+WORD_ID_PREFIX = "word_"  # Prefix for word IDs
 
 # File Names
 VOCABULARY_FILE = "vocabulary.json"

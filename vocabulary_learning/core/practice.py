@@ -11,66 +11,45 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Confirm
 
+from vocabulary_learning.core.console_utils import (
+    exit_with_save,
+    format_multiple_answers,
+    show_answer_feedback,
+)
+from vocabulary_learning.core.constants import (
+    DEFAULT_TIMEZONE,
+    INITIAL_EASINESS_FACTOR,
+    MASTERY_MIN_SUCCESSES,
+    MASTERY_SUCCESS_RATE,
+    MAX_ACTIVE_WORDS,
+    REQUIRED_PROGRESS_FIELDS,
+    REQUIRED_VOCABULARY_COLUMNS,
+    VIM_COMMANDS,
+    WORD_ID_DIGITS,
+    WORD_ID_PREFIX,
+)
+from vocabulary_learning.core.progress_helpers import update_progress_if_first_attempt
 from vocabulary_learning.core.progress_tracking import (
     calculate_priority,
     calculate_weighted_success_rate,
     count_active_learning_words,
     is_mastered,
 )
-from vocabulary_learning.core.utils import (
-    exit_with_save,
-    format_multiple_answers,
+from vocabulary_learning.core.text_processing import (
+    format_datetime,
     format_time_interval,
     is_minor_typo,
     normalize_french,
-    show_answer_feedback,
-    update_progress_if_first_attempt,
 )
 
 # Load timezone from .env
 load_dotenv()
-TIMEZONE = os.getenv("TIMEZONE", "Europe/Helsinki")  # Default to Helsinki time if not set
+TIMEZONE = os.getenv("TIMEZONE", DEFAULT_TIMEZONE)  # Default to DEFAULT_TIMEZONE if not set
 try:
     tz = pytz.timezone(TIMEZONE)
 except pytz.exceptions.UnknownTimeZoneError:
     print(f"Warning: Unknown timezone {TIMEZONE}, falling back to UTC")
     tz = pytz.UTC
-
-
-def format_datetime(dt_str):
-    """Format datetime string with timezone support.
-
-    Converts UTC datetime to local timezone and formats it in a human-readable way.
-    For recent dates, uses relative formatting (e.g., "Today at 14:30", "Yesterday at 09:15").
-    For older dates, uses absolute formatting with the local timezone.
-    """
-    load_dotenv()
-    timezone_str = os.getenv("TIMEZONE", "Europe/Helsinki")
-    timezone = pytz.timezone(timezone_str)
-
-    try:
-        dt = datetime.fromisoformat(dt_str)
-        # All timestamps in progress.json are in UTC
-        utc_dt = pytz.utc.localize(dt) if dt.tzinfo is None else dt.astimezone(pytz.UTC)
-        # Convert to local timezone
-        local_dt = utc_dt.astimezone(timezone)
-        now = datetime.now(timezone)
-
-        # Calculate the date difference
-        date_diff = (now.date() - local_dt.date()).days
-
-        # Format based on how recent the date is
-        if date_diff == 0:
-            return f"Today at {local_dt.strftime('%H:%M')} ({timezone_str})"
-        elif date_diff == 1:
-            return f"Yesterday at {local_dt.strftime('%H:%M')} ({timezone_str})"
-        elif date_diff < 7:
-            return f"{local_dt.strftime('%A')} at {local_dt.strftime('%H:%M')} ({timezone_str})"
-        else:
-            return f"{local_dt.strftime('%Y-%m-%d %H:%M')} ({timezone_str})"
-    except Exception as e:
-        print(f"Error formatting datetime: {e}")
-        return dt_str
 
 
 def practice_mode(
@@ -100,7 +79,7 @@ def practice_mode(
         successes = word_data.get("successes", 0)
         if attempts > 0:
             success_rate = successes / attempts
-            if success_rate >= 0.9 and successes >= 5:
+            if success_rate >= MASTERY_SUCCESS_RATE and successes >= MASTERY_MIN_SUCCESSES:
                 mastered_count += 1
             else:
                 active_count += 1
@@ -118,11 +97,7 @@ def practice_mode(
     )
 
     console.print("[dim]Available commands:[/dim]")
-    console.print(
-        "[blue]:h[/blue] help • [blue]:m[/blue] menu • [blue]:q[/blue] quit • [blue]:s[/blue] show progress • [blue]:d[/blue] don't know • [blue]:e[/blue] show example"
-    )
-
-    last_save_time = datetime.now()
+    console.print(" • ".join(f"[blue]{cmd}[/blue] {desc}" for cmd, desc in VIM_COMMANDS.items()))
 
     while True:
         # Select a word to practice
@@ -143,7 +118,7 @@ def practice_mode(
 
         # Get word ID for progress tracking
         word_index = vocabulary[vocabulary["japanese"] == japanese].index[0]
-        word_id = str(word_index + 1).zfill(6)
+        word_id = str(word_index + 1).zfill(WORD_ID_DIGITS)
 
         # Track if this is the first attempt for progress tracking
         first_attempt = True
@@ -235,11 +210,6 @@ def practice_mode(
                     console.print("\n[yellow]Let's try again![/yellow]")
                     break
 
-        # Auto-save progress periodically
-        if (datetime.now() - last_save_time).seconds > 300:  # 5 minutes
-            save_progress_fn()
-            last_save_time = datetime.now()
-
         console.print("\n[dim]• ─────────────────────── •[/dim]")  # Add decorative separator
 
 
@@ -251,23 +221,13 @@ def verify_data(vocabulary: pd.DataFrame, progress: Dict) -> None:
         progress: Dictionary containing progress data
     """
     # Verify vocabulary has required columns
-    required_columns = ["japanese", "kanji", "french", "example_sentence"]
-    for column in required_columns:
+    for column in REQUIRED_VOCABULARY_COLUMNS:
         if column not in vocabulary.columns:
             raise ValueError(f"Missing required column: {column}")
 
     # Verify progress data structure
     for word_id, word_data in progress.items():
-        required_fields = [
-            "attempts",
-            "successes",
-            "interval",
-            "last_attempt_was_failure",
-            "last_seen",
-            "review_intervals",
-            "easiness_factor",
-        ]
-        for field in required_fields:
+        for field in REQUIRED_PROGRESS_FIELDS:
             if field not in word_data:
                 raise ValueError(f"Missing required field {field} in progress data for {word_id}")
 
@@ -293,31 +253,40 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
     progress_word_ids = set(progress.keys())
     new_words = vocabulary[
         ~vocabulary.index.isin(
-            [i for i in range(len(vocabulary)) if str(i + 1).zfill(6) in progress_word_ids]
+            [
+                i
+                for i in range(len(vocabulary))
+                if str(i + 1).zfill(WORD_ID_DIGITS) in progress_word_ids
+            ]
         )
     ]
 
     # Calculate priorities for words in progress
     priorities = {}
+    max_priority = 0.0
     for word_id, word_data in progress.items():
         if not is_mastered(word_data):
-            priorities[word_id] = calculate_priority(word_data, active_words_count)
+            priority = calculate_priority(word_data, active_words_count)
+            priorities[word_id] = priority
+            max_priority = max(max_priority, priority)
 
-    # If there are no words in progress or all are mastered,
-    # select a new word if available
-    if not priorities and not new_words.empty:
+    # Calculate priority for new words
+    new_word_priority = calculate_priority(None, active_words_count)
+
+    # If new words have higher priority than existing words, select a new word
+    if new_word_priority > max_priority and not new_words.empty:
         selected_word = new_words.iloc[0]
         console.print(f"\n[dim]Selecting {selected_word['japanese']} [{selected_word.name}][/dim]")
-        console.print("[dim]- priority: 0.8 (new word)[/dim]")
+        console.print(f"[dim]- priority: {new_word_priority:.1f} (new word)[/dim]")
         console.print("[dim]- success rate: 0% (0/0)[/dim]")
-        console.print("[dim]- easiness factor: 2.5[/dim]")
+        console.print(f"[dim]- easiness factor: {INITIAL_EASINESS_FACTOR}[/dim]")
         console.print("[dim]- optimal interval: as soon as possible[/dim]")
         console.print("[dim]- last attempt was a success: N/A[/dim]")
         console.print("[dim]- last presented: never[/dim]")
         console.print("[dim]- mastery status: Not started[/dim]")
         return selected_word
 
-    # If there are words in progress, select based on priority
+    # If there are words in progress with higher priority, select based on priority
     if priorities:
         # Sort by priority (highest first)
         sorted_words = sorted(priorities.items(), key=lambda x: x[1], reverse=True)
@@ -334,9 +303,11 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
             word_data.get("attempt_history", [])
         )
         mastery_status = []
-        if successes < 5:
-            mastery_status.append("needs more successful reviews (minimum 5)")
-        if weighted_success_rate < 0.8:
+        if successes < MASTERY_MIN_SUCCESSES:
+            mastery_status.append(
+                f"needs more successful reviews (minimum {MASTERY_MIN_SUCCESSES})"
+            )
+        if weighted_success_rate < MASTERY_SUCCESS_RATE:
             mastery_status.append(
                 f"needs higher success rate (current: {weighted_success_rate:.1%})"
             )
@@ -363,17 +334,15 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
             f"[dim]- last attempt was a success: {'No' if word_data['last_attempt_was_failure'] else 'Yes'}[/dim]"
         )
         console.print(f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]")
-        if not mastery_status:  # If no criteria are failing
-            console.print(f"[dim]- mastery status: [green]Mastered![/green][/dim]")
+        if mastery_status:
+            console.print(f"[dim]- mastery status: {', '.join(mastery_status)}[/dim]")
         else:
-            console.print(
-                f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]"
-            )
+            console.print("[dim]- mastery status: Ready for mastery![/dim]")
 
         return selected_word
 
-    # If no words are available (all mastered), select a random word
-    return vocabulary.sample(n=1).iloc[0]
+    # If no words are available for practice, return None
+    return None
 
 
 def check_answer(user_answer, correct_answer):
@@ -477,9 +446,9 @@ def display_updated_stats(
     successes = word_data.get("successes", 0)
     weighted_success_rate = calculate_weighted_success_rate(word_data.get("attempt_history", []))
     mastery_status = []
-    if successes < 5:
-        mastery_status.append("needs more successful reviews (minimum 5)")
-    if weighted_success_rate < 0.8:
+    if successes < MASTERY_MIN_SUCCESSES:
+        mastery_status.append(f"needs more successful reviews (minimum {MASTERY_MIN_SUCCESSES})")
+    if weighted_success_rate < MASTERY_SUCCESS_RATE:
         mastery_status.append(f"needs higher success rate (current: {weighted_success_rate:.1%})")
 
     if not mastery_status:  # If no criteria are failing

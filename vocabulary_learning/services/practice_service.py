@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 
 from rich.console import Console
 
+from vocabulary_learning.core.constants import DEFAULT_PRACTICE_WORDS
 from vocabulary_learning.core.progress_tracking import is_mastered
 from vocabulary_learning.services.progress_service import ProgressService
 from vocabulary_learning.services.vocabulary_service import VocabularyService
@@ -28,11 +29,11 @@ class PracticeService:
         self.progress_service = progress_service
         self.console = console or Console()
 
-    def select_practice_words(self, num_words: int = 10) -> List[str]:
+    def select_practice_words(self, num_words: int = DEFAULT_PRACTICE_WORDS) -> List[str]:
         """Select words for practice based on priority.
 
         Args:
-            num_words: Number of words to select
+            num_words: Number of words to select (defaults to DEFAULT_PRACTICE_WORDS)
 
         Returns:
             List of selected words

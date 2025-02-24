@@ -5,12 +5,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
+import pytz
 from firebase_admin import db
 from rich.console import Console
 
+from vocabulary_learning.core.constants import (
+    EASINESS_DECREASE,
+    EASINESS_INCREASE,
+    FIRST_SUCCESS_INTERVAL,
+    INITIAL_EASINESS_FACTOR,
+    MAX_REVIEW_INTERVALS_HISTORY,
+    MIN_EASINESS_FACTOR,
+    SECOND_SUCCESS_INTERVAL,
+)
 from vocabulary_learning.core.progress_tracking import (
     calculate_priority,
     count_active_learning_words,
+    is_mastered,
 )
 from vocabulary_learning.services.base_service import BaseService
 
@@ -91,7 +102,7 @@ class ProgressService(BaseService):
                 "last_seen": datetime.now().isoformat(),
                 "review_intervals": [],
                 "last_attempt_was_failure": False,
-                "easiness_factor": 2.5,
+                "easiness_factor": INITIAL_EASINESS_FACTOR,
                 "interval": 0,
                 "attempt_history": [],  # Initialize attempt history
             }
@@ -99,7 +110,7 @@ class ProgressService(BaseService):
             # Add interval if missing in existing progress data
             self.progress[word_id]["interval"] = 0
             self.progress[word_id]["easiness_factor"] = self.progress[word_id].get(
-                "easiness_factor", 2.5
+                "easiness_factor", INITIAL_EASINESS_FACTOR
             )
             self.progress[word_id]["last_attempt_was_failure"] = self.progress[word_id].get(
                 "last_attempt_was_failure", False
@@ -110,10 +121,10 @@ class ProgressService(BaseService):
         hours_since_last = (datetime.now() - last_seen).total_seconds() / 3600.0
         self.progress[word_id]["review_intervals"].append(hours_since_last)
 
-        # Keep only last 10 intervals
-        if len(self.progress[word_id]["review_intervals"]) > 10:
+        # Keep only last MAX_REVIEW_INTERVALS_HISTORY intervals
+        if len(self.progress[word_id]["review_intervals"]) > MAX_REVIEW_INTERVALS_HISTORY:
             self.progress[word_id]["review_intervals"] = self.progress[word_id]["review_intervals"][
-                -10:
+                -MAX_REVIEW_INTERVALS_HISTORY:
             ]
 
         self.progress[word_id]["attempts"] += 1
@@ -129,25 +140,28 @@ class ProgressService(BaseService):
             self.progress[word_id]["successes"] += 1
             # Update SuperMemo 2 parameters
             if self.progress[word_id]["interval"] == 0:
-                self.progress[word_id]["interval"] = 0.0333  # First success: wait 2 minutes
-            elif self.progress[word_id]["interval"] == 0.0333:
-                self.progress[word_id]["interval"] = 24  # Second success: wait 1 day
+                self.progress[word_id][
+                    "interval"
+                ] = FIRST_SUCCESS_INTERVAL  # First success: wait 2 minutes
+            elif self.progress[word_id]["interval"] == FIRST_SUCCESS_INTERVAL:
+                self.progress[word_id][
+                    "interval"
+                ] = SECOND_SUCCESS_INTERVAL  # Second success: wait 1 day
             else:
                 # Calculate new interval using easiness factor
                 self.progress[word_id]["interval"] *= self.progress[word_id]["easiness_factor"]
 
             # Update easiness factor (increase for correct answers)
-            self.progress[word_id]["easiness_factor"] = max(
-                1.3, self.progress[word_id]["easiness_factor"] + 0.1
+            self.progress[word_id]["easiness_factor"] = min(
+                INITIAL_EASINESS_FACTOR,
+                self.progress[word_id]["easiness_factor"] + EASINESS_INCREASE,
             )
             self.progress[word_id]["last_attempt_was_failure"] = False
         else:
             # Decrease interval and easiness factor for incorrect answers
-            self.progress[word_id]["interval"] = max(
-                0.0333, self.progress[word_id]["interval"] * 0.5
-            )
+            self.progress[word_id]["interval"] = FIRST_SUCCESS_INTERVAL  # Reset to 2 minutes
             self.progress[word_id]["easiness_factor"] = max(
-                1.3, self.progress[word_id]["easiness_factor"] - 0.2
+                MIN_EASINESS_FACTOR, self.progress[word_id]["easiness_factor"] - EASINESS_DECREASE
             )
             self.progress[word_id]["last_attempt_was_failure"] = True
 

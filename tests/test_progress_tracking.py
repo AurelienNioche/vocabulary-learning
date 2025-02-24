@@ -177,8 +177,10 @@ class TestProgressTracking(unittest.TestCase):
     def test_calculate_priority_new_word(self):
         """Test priority calculation for new words."""
         # Test with space for new words
+        # New words get priority 0.8 to ensure overdue words (ratio > 1.0)
+        # or failed words (bonus 0.3) take precedence
         priority = calculate_priority(None, active_words_count=5)
-        self.assertEqual(priority, 1.0)
+        self.assertEqual(priority, 0.8)
 
         # Test when at max active words
         priority = calculate_priority(None, active_words_count=8)

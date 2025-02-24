@@ -8,14 +8,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
 
-from vocabulary_learning.core.constants import ENV_FILE
+from vocabulary_learning.core.constants import ENV_FILE, VIM_COMMANDS
 from vocabulary_learning.core.file_operations import load_progress, load_vocabulary, save_progress
 from vocabulary_learning.core.firebase_config import initialize_firebase
 from vocabulary_learning.core.japanese_utils import JapaneseTextConverter
+from vocabulary_learning.core.paths import get_data_dir
 from vocabulary_learning.core.practice import practice_mode
 from vocabulary_learning.core.progress_tracking import update_progress
+from vocabulary_learning.core.signal_handlers import signal_handler
 from vocabulary_learning.core.ui_components import show_help, show_progress, show_word_statistics
-from vocabulary_learning.core.utils import get_data_dir, signal_handler
 from vocabulary_learning.core.vocabulary_management import add_vocabulary, reset_progress
 
 # Get the package root directory
@@ -61,14 +62,7 @@ class VocabularyLearner:
         signal.signal(signal.SIGINT, lambda s, f: signal_handler(s, f, self.save_progress))
 
         # Initialize commands
-        self.vim_commands = {
-            ":q": "quit program",
-            ":m": "return to menu",
-            ":h": "show help",
-            ":s": "show word statistics",
-            ":e": "show example",
-            ":d": "show answer (don't know)",
-        }
+        self.vim_commands = VIM_COMMANDS
 
         self.last_save_time = datetime.now()
 

@@ -8,6 +8,13 @@ import pandas as pd
 import pytz
 from rich.console import Console
 
+from vocabulary_learning.core.constants import (
+    MASTERY_MIN_SUCCESSES,
+    MASTERY_SUCCESS_RATE,
+    MAX_ACTIVE_WORDS,
+    WORD_ID_DIGITS,
+    WORD_ID_PREFIX,
+)
 from vocabulary_learning.core.practice import check_answer, practice_mode, select_word
 
 
@@ -33,9 +40,15 @@ class TestPractice(unittest.TestCase):
                 },
                 {
                     "japanese": "さようなら",
-                    "kanji": "",
+                    "kanji": "さようなら",
                     "french": "au revoir",
-                    "example_sentence": "",
+                    "example_sentence": "さようなら、また会いましょう。",
+                },
+                {
+                    "japanese": "ありがとう",
+                    "kanji": "有難う",
+                    "french": "merci",
+                    "example_sentence": "ありがとうございます。",
                 },
             ]
         )
@@ -191,7 +204,7 @@ class TestPractice(unittest.TestCase):
         now = datetime.now(pytz.UTC)
         progress = {
             # Word with high success rate but not enough attempts
-            "word_1": {
+            f"{WORD_ID_PREFIX}1": {
                 "attempts": 4,
                 "successes": 4,  # 100% but only 4 successes
                 "last_seen": "2024-02-11T12:00:00",
@@ -202,7 +215,7 @@ class TestPractice(unittest.TestCase):
                 ],
             },
             # Word with enough attempts but low success rate
-            "word_2": {
+            f"{WORD_ID_PREFIX}2": {
                 "attempts": 10,
                 "successes": 8,  # 80% success rate
                 "last_seen": "2024-02-11T12:00:00",
@@ -213,7 +226,7 @@ class TestPractice(unittest.TestCase):
                 ],
             },
             # Word that meets mastery criteria
-            "word_3": {
+            f"{WORD_ID_PREFIX}3": {
                 "attempts": 10,
                 "successes": 9,  # 90% success rate
                 "last_seen": "2024-02-11T12:00:00",
@@ -224,7 +237,7 @@ class TestPractice(unittest.TestCase):
                 ],
             },
             # Word that exceeds mastery criteria
-            "word_4": {
+            f"{WORD_ID_PREFIX}4": {
                 "attempts": 15,
                 "successes": 14,  # 93% success rate
                 "last_seen": "2024-02-11T12:00:00",
@@ -316,6 +329,107 @@ class TestPractice(unittest.TestCase):
         first_call_args = self.mock_update_progress.call_args_list[0][0]
         self.assertEqual(first_call_args[1], False)  # Second argument should be success=False
         mock_exit.assert_called_once()
+
+    def test_introduce_new_word_when_below_max_active(self):
+        """Test that new words are introduced when below MAX_ACTIVE_WORDS."""
+        # Create progress data with only 2 active words that are not due for review
+        now = datetime.now(pytz.UTC)
+        progress = {
+            "000001": {
+                "attempts": 3,
+                "successes": 2,
+                "interval": 24,
+                "last_attempt_was_failure": False,
+                "last_seen": (now - timedelta(hours=1)).isoformat(),  # Seen recently
+                "review_intervals": [1, 4, 24],
+                "easiness_factor": 2.5,
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i != 1}
+                    for i in range(1, 4)
+                ],
+            },
+            "000002": {
+                "attempts": 2,
+                "successes": 1,
+                "interval": 1,
+                "last_attempt_was_failure": False,  # Not failed
+                "last_seen": (now - timedelta(minutes=30)).isoformat(),  # Seen very recently
+                "review_intervals": [1],
+                "easiness_factor": 2.5,
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i != 1}
+                    for i in range(1, 3)
+                ],
+            },
+        }
+
+        # Select a word
+        selected_word = select_word(self.vocabulary, progress, self.console)
+
+        # Verify that a new word was selected since existing words are not due
+        self.assertIsNotNone(selected_word)
+        self.assertEqual(selected_word["japanese"], "ありがとう")
+
+    def test_prioritize_due_word_over_new(self):
+        """Test that due words are prioritized over new words even when below max active."""
+        now = datetime.now(pytz.UTC)
+        progress = {
+            "000001": {
+                "attempts": 3,
+                "successes": 2,
+                "interval": 1,  # Due after 1 hour
+                "last_attempt_was_failure": True,  # Failed last time
+                "last_seen": (now - timedelta(hours=2)).isoformat(),  # Overdue
+                "review_intervals": [1],
+                "easiness_factor": 2.5,
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i != 2}
+                    for i in range(1, 4)
+                ],
+            }
+        }
+
+        # Select a word
+        selected_word = select_word(self.vocabulary, progress, self.console)
+
+        # Verify that the overdue word was selected instead of a new word
+        self.assertIsNotNone(selected_word)
+        self.assertEqual(selected_word["japanese"], "こんにちは")
+
+    def test_no_new_words_when_at_max_active(self):
+        """Test that no new words are introduced when at MAX_ACTIVE_WORDS."""
+        # Create progress data with MAX_ACTIVE_WORDS active words
+        now = datetime.now(pytz.UTC)
+        progress = {}
+
+        # Add MAX_ACTIVE_WORDS number of active learning words
+        for i in range(MAX_ACTIVE_WORDS):
+            word_id = str(i + 1).zfill(6)
+            progress[word_id] = {
+                "attempts": 3,
+                "successes": 2,
+                "interval": 24,
+                "last_attempt_was_failure": False,
+                "last_seen": (now - timedelta(hours=48)).isoformat(),
+                "review_intervals": [1, 4, 24],
+                "easiness_factor": 2.5,
+                "attempt_history": [
+                    {"timestamp": (now - timedelta(hours=j)).isoformat(), "success": j != 1}
+                    for j in range(1, 4)
+                ],
+            }
+
+        # Select a word
+        selected_word = select_word(self.vocabulary, progress, self.console)
+
+        # Verify that one of the existing active words was selected
+        self.assertIsNotNone(selected_word)
+        self.assertIn(
+            selected_word["japanese"], ["こんにちは", "さようなら"]
+        )  # Should be one of the first two words
+
+        # Also verify that the third word (which would be new) was not selected
+        self.assertNotEqual(selected_word["japanese"], "ありがとう")
 
 
 if __name__ == "__main__":

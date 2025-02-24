@@ -101,9 +101,9 @@ def add_vocabulary(
 
         # Generate new word ID
         next_id = 1
-        while f"word_{str(next_id).zfill(6)}" in vocab_data:
+        while str(next_id).zfill(6) in vocab_data:
             next_id += 1
-        word_id = f"word_{str(next_id).zfill(6)}"
+        word_id = str(next_id).zfill(6)
 
         # Create new word entry
         vocab_data[word_id] = {

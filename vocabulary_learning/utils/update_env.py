@@ -7,6 +7,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 
+from vocabulary_learning.core.constants import DEFAULT_TIMEZONE
+
 
 def update_env():
     """Update .env file with timezone information."""
@@ -15,14 +17,11 @@ def update_env():
         Panel.fit(
             "[bold blue]Timezone Configuration[/bold blue]\n\n"
             "This will add or update the timezone setting in your .env file.\n"
-            "For Finland, the timezone should be 'Europe/Helsinki'.",
+            f"For Finland, the timezone should be '{DEFAULT_TIMEZONE}'.",
             title="Timezone Setup",
             border_style="blue",
         )
     )
-
-    # Default timezone for Finland
-    default_timezone = "Europe/Helsinki"
 
     # Get the .env file path
     env_path = Path(".env")
@@ -41,7 +40,7 @@ def update_env():
                         continue
 
     # Get timezone from user or use default
-    timezone = Prompt.ask("Enter your timezone", default=default_timezone, show_default=True)
+    timezone = Prompt.ask("Enter your timezone", default=DEFAULT_TIMEZONE, show_default=True)
 
     # Update timezone in env_content
     env_content["TIMEZONE"] = timezone

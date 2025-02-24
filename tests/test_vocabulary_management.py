@@ -827,6 +827,80 @@ class TestVocabularyManagement(unittest.TestCase):
         self.assertEqual(vocab_data[word_id]["kanji"], "新しい")
         self.assertEqual(vocab_data[word_id]["french"], "nouveau")
 
+    @patch("builtins.input")
+    def test_add_vocabulary_correct_id_format(self, mock_input):
+        """Test that word IDs are generated correctly without word_ prefix."""
+        # Mock user inputs
+        mock_input.side_effect = [
+            "いぬ",  # Japanese
+            "犬",  # Kanji
+            "chien",  # French
+            "私の犬は可愛いです",  # Example
+            "n",  # Don't add another word
+        ]
+
+        # Create existing vocabulary file with some entries
+        initial_vocab = {
+            "000001": {
+                "hiragana": "ねこ",
+                "kanji": "猫",
+                "french": "chat",
+                "example_sentence": "猫が好きです",
+            },
+            "000002": {
+                "hiragana": "とり",
+                "kanji": "鳥",
+                "french": "oiseau",
+                "example_sentence": "鳥が飛んでいます",
+            },
+        }
+        with open(self.vocab_file, "w", encoding="utf-8") as f:
+            json.dump(initial_vocab, f, ensure_ascii=False, indent=2)
+
+        # Create mock vocabulary DataFrame
+        mock_vocab_df = pd.DataFrame(
+            [
+                {
+                    "japanese": "ねこ",
+                    "kanji": "猫",
+                    "french": "chat",
+                    "example_sentence": "猫が好きです",
+                },
+                {
+                    "japanese": "とり",
+                    "kanji": "鳥",
+                    "french": "oiseau",
+                    "example_sentence": "鳥が飛んでいます",
+                },
+            ]
+        )
+
+        # Mock load_vocabulary function
+        mock_load_vocab = MagicMock(return_value=mock_vocab_df)
+
+        with patch("rich.prompt.Confirm.ask", return_value=False):
+            add_vocabulary(mock_vocab_df, self.vocab_file, None, self.console, mock_load_vocab)
+
+        # Verify file contents
+        with open(self.vocab_file, "r", encoding="utf-8") as f:
+            vocab_data = json.load(f)
+
+        # Check that the new word was added with correct ID format
+        self.assertEqual(len(vocab_data), 3)  # Should have 3 words total
+
+        # Verify IDs are in correct format (6 digits, no word_ prefix)
+        for word_id in vocab_data.keys():
+            self.assertRegex(word_id, r"^\d{6}$")  # Should match exactly 6 digits
+            self.assertNotIn("word_", word_id)  # Should not contain word_
+
+        # Verify the new word got ID "000003"
+        self.assertIn("000003", vocab_data)
+        new_word = vocab_data["000003"]
+        self.assertEqual(new_word["hiragana"], "いぬ")
+        self.assertEqual(new_word["kanji"], "犬")
+        self.assertEqual(new_word["french"], "chien")
+        self.assertEqual(new_word["example_sentence"], "私の犬は可愛いです")
+
 
 if __name__ == "__main__":
     unittest.main()

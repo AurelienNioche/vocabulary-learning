@@ -6,6 +6,20 @@ from typing import Callable, Dict, Optional
 
 import pytz
 
+from vocabulary_learning.core.constants import (
+    EASINESS_DECREASE,
+    EASINESS_INCREASE,
+    FAILED_WORD_PRIORITY_BONUS,
+    FIRST_SUCCESS_INTERVAL,
+    HALF_LIFE_DAYS,
+    INITIAL_EASINESS_FACTOR,
+    MASTERY_MIN_SUCCESSES,
+    MASTERY_SUCCESS_RATE,
+    MAX_ACTIVE_WORDS,
+    MIN_EASINESS_FACTOR,
+    SECOND_SUCCESS_INTERVAL,
+)
+
 
 def get_utc_now():
     """Get current UTC time as timezone-aware datetime."""
@@ -23,9 +37,9 @@ def calculate_next_interval(current_interval: float, easiness_factor: float) -> 
         Next interval in hours
     """
     if current_interval == 0:
-        return 0.0333  # First success: wait 2 minutes
-    elif current_interval == 0.0333:
-        return 24  # Second success: wait 1 day
+        return FIRST_SUCCESS_INTERVAL  # First success: wait 2 minutes
+    elif current_interval == FIRST_SUCCESS_INTERVAL:
+        return SECOND_SUCCESS_INTERVAL  # Second success: wait 1 day
     else:
         return current_interval * easiness_factor  # Increase interval based on easiness
 
@@ -50,8 +64,8 @@ def update_progress(word_id: str, success: bool, progress: Dict, save_callback: 
             "last_attempt_was_failure": False,
             "last_seen": now.isoformat(),
             "review_intervals": [],
-            "easiness_factor": 2.5,  # Initial easiness factor
-            "attempt_history": [],  # List of (timestamp, success) tuples
+            "easiness_factor": INITIAL_EASINESS_FACTOR,
+            "attempt_history": [],
         }
 
     # Calculate time since last review
@@ -79,13 +93,15 @@ def update_progress(word_id: str, success: bool, progress: Dict, save_callback: 
             progress[word_id]["easiness_factor"],
         )
         # Only increase easiness factor if it's not already at maximum
-        if progress[word_id]["easiness_factor"] < 2.5:
+        if progress[word_id]["easiness_factor"] < INITIAL_EASINESS_FACTOR:
             progress[word_id]["easiness_factor"] = min(
-                progress[word_id]["easiness_factor"] + 0.1, 2.5
+                progress[word_id]["easiness_factor"] + EASINESS_INCREASE, INITIAL_EASINESS_FACTOR
             )
     else:
-        progress[word_id]["interval"] = 0.0333  # Reset to 2 minutes on failure
-        progress[word_id]["easiness_factor"] = max(progress[word_id]["easiness_factor"] - 0.2, 1.3)
+        progress[word_id]["interval"] = FIRST_SUCCESS_INTERVAL  # Reset to 2 minutes on failure
+        progress[word_id]["easiness_factor"] = max(
+            progress[word_id]["easiness_factor"] - EASINESS_DECREASE, MIN_EASINESS_FACTOR
+        )
 
     # Update last seen and failure status
     progress[word_id]["last_seen"] = now.isoformat()
@@ -114,7 +130,6 @@ def calculate_weighted_success_rate(attempt_history: list, now: Optional[datetim
     if now is None:
         now = get_utc_now()
 
-    HALF_LIFE_DAYS = 30.0  # Time after which an attempt's weight becomes 0.5
     decay_rate = 0.693 / (HALF_LIFE_DAYS * 24)  # ln(2) / half-life in hours
 
     total_weight = 0.0
@@ -150,8 +165,9 @@ def calculate_priority(word_data: Optional[Dict], active_words_count: int) -> fl
     """
     # For new words, check if we have space for more active words
     if word_data is None:
-        if active_words_count < 8:  # Maximum 8 active words
-            return 1.0
+        if active_words_count < MAX_ACTIVE_WORDS:  # Maximum active words
+            # Give new words a good priority, but not higher than overdue words
+            return 0.8
         return 0.0
 
     # Skip if no interval set
@@ -176,8 +192,9 @@ def calculate_priority(word_data: Optional[Dict], active_words_count: int) -> fl
 
     # Add bonus for failed words
     if word_data.get("last_attempt_was_failure", False):
-        priority += 0.3
+        priority += FAILED_WORD_PRIORITY_BONUS
 
+    # Cap priority at 1.0
     return min(1.0, priority)
 
 
@@ -185,8 +202,8 @@ def is_mastered(word_data: Dict) -> bool:
     """Check if a word meets the mastery criteria.
 
     A word is considered mastered if:
-    1. It has at least 5 successful reviews total
-    2. It has a weighted success rate of at least 80%, with more recent attempts weighted more heavily
+    1. It has at least MASTERY_MIN_SUCCESSES successful reviews total
+    2. It has a weighted success rate of at least MASTERY_SUCCESS_RATE
 
     Args:
         word_data: Dictionary containing word progress data
@@ -200,13 +217,13 @@ def is_mastered(word_data: Dict) -> bool:
     successes = word_data.get("successes", 0)
     attempt_history = word_data.get("attempt_history", [])
 
-    # First criterion: at least 5 successful reviews total
-    if successes < 5:
+    # First criterion: minimum number of successful reviews
+    if successes < MASTERY_MIN_SUCCESSES:
         return False
 
-    # Second criterion: 80% weighted success rate
+    # Second criterion: minimum weighted success rate
     weighted_success_rate = calculate_weighted_success_rate(attempt_history)
-    return weighted_success_rate >= 0.8
+    return weighted_success_rate >= MASTERY_SUCCESS_RATE
 
 
 def count_active_learning_words(progress_data: Dict) -> int:

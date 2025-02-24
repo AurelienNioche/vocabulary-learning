@@ -13,6 +13,9 @@ A command-line tool for learning Japanese vocabulary with spaced repetition and 
 - Japanese text support (hiragana, katakana, kanji)
 - Advanced spaced repetition system (based on SuperMemo 2)
 - Progress tracking and statistics
+  - Track total words, active words, and mastered words
+  - Utility functions for analyzing learning progress
+  - Detailed success rate calculations
 - Smart word selection algorithm
 - Temporal decay-based word mastery tracking
 
@@ -46,14 +49,24 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
    - Failed reviews: Decrease factor by 0.2 (minimum 1.3)
 
 3. **Word Selection Priority**:
-   - Based on multiple factors:
-     - Time since last review relative to scheduled interval
-     - Success rate (lower rates get higher priority)
-     - Number of attempts (newer words get higher priority)
-     - Last attempt result (failed words get higher priority)
-   - Words not due for review are skipped
-   - New words get high but not maximum priority
-   - Priority is scaled based on active word count
+   - Priority is calculated on a scale of 0.0 to 1.0+
+   - For existing words:
+     - Base priority = time since last review / optimal interval
+     - Failed words get +0.3 priority bonus
+     - Overdue words can have priority > 1.0
+   - For new words:
+     - Priority = 0.8 if below MAX_ACTIVE_WORDS (8)
+     - Priority = 0.0 if at MAX_ACTIVE_WORDS
+   - This ensures:
+     - Overdue words (ratio > 1.0) take highest priority
+     - Failed words get next priority (base + 0.3)
+     - New words come next (0.8) when below limit
+     - Non-due words have lowest priority
+   - Active word management:
+     - Maximum 8 active words at a time
+     - Word is "active" if it has attempts but isn't mastered
+     - New words only introduced when below limit
+     - Mastered words don't count toward limit
 
 4. **Word Mastery Criteria**:
    - A word is considered mastered when:
@@ -70,6 +83,48 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
      - Very recent failures have strong impact on mastery status
    - Mastered words are excluded from regular review
    - System focuses on words still being learned
+
+### Progress Tracking and Priority System
+
+The system uses several key functions to manage learning progress:
+
+1. **Progress Updates** (`update_progress`):
+   - Tracks attempts, successes, and intervals
+   - Maintains attempt history with timestamps
+   - Adjusts easiness factor based on performance
+   - Updates review intervals and last seen time
+   - Handles first-time initialization of words
+
+2. **Success Rate Calculation** (`calculate_weighted_success_rate`):
+   - Uses temporal decay weighting
+   - Recent attempts have more impact
+   - 30-day half-life decay
+   - Weight formula: e^(-λt) where λ = ln(2)/(30*24)
+   - Returns rate between 0.0 and 1.0
+
+3. **Priority Calculation** (`calculate_priority`):
+   - For existing words:
+     ```
+     base_priority = hours_since_last_review / optimal_interval
+     if last_attempt_failed:
+         priority += 0.3
+     priority = min(1.0, priority)  # Cap at 1.0
+     ```
+   - For new words:
+     ```
+     if active_words < 8:
+         priority = 0.8
+     else:
+         priority = 0.0
+     ```
+
+4. **Active Word Management**:
+   - Tracks words being actively learned
+   - Word is "active" if:
+     - Has at least one attempt
+     - Not yet mastered (< 5 successes or < 80% success rate)
+   - System maintains maximum 8 active words
+   - New words only introduced when below limit
 
 ### Vim-like Commands
 - `:h` - Show help
@@ -183,6 +238,32 @@ vocab
 - Use Vim-like commands for navigation
 - View statistics and examples
 - Track your progress
+
+4. Utility Scripts:
+- View learning progress statistics:
+  ```bash
+  python -m vocabulary_learning.utils.count_stats
+  ```
+  This will show:
+  - Total words being tracked
+  - Active (non-mastered) words
+  - Mastered words
+  
+  For detailed word-by-word statistics:
+  ```bash
+  python -m vocabulary_learning.utils.count_stats --items
+  ```
+  This shows for each attempted word:
+  - Number of successful attempts
+  - Total number of attempts
+  - Raw success rate
+  - Weighted success rate (recent attempts weighted more heavily)
+  - Mastery status
+
+  You can also specify a custom progress file:
+  ```bash
+  python -m vocabulary_learning.utils.count_stats --progress-file path/to/progress.json
+  ```
 
 ## Adding Vocabulary
 

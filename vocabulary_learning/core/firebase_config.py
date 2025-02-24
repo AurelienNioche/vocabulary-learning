@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from firebase_admin import auth, credentials, db
 from rich.console import Console
 
+from vocabulary_learning.core.constants import FIREBASE_PATHS
 from vocabulary_learning.core.ssl_config import create_ssl_context
 
 
@@ -48,8 +49,8 @@ def initialize_firebase(console: Console, env_file: str = None):
         console.print(f"[dim]Authenticated as: [green]{user.email}[/green][/dim]")
 
         # Get database references
-        progress_ref = db.reference("progress")
-        vocab_ref = db.reference("vocabulary")
+        progress_ref = db.reference(FIREBASE_PATHS["progress"])
+        vocab_ref = db.reference(FIREBASE_PATHS["vocabulary"])
 
         return progress_ref, vocab_ref
 

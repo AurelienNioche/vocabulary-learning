@@ -7,6 +7,9 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
+# Default timezone (should match DEFAULT_TIMEZONE in constants.py)
+DEFAULT_TIMEZONE="Europe/Helsinki"
+
 # Function to print colored messages
 print_step() {
     echo -e "${BLUE}==>${NC} ${BOLD}$1${NC}"
@@ -71,8 +74,8 @@ setup_environment() {
         # Get Firebase configuration
         read -p "Enter your Firebase Database URL: " db_url
         read -p "Enter your Firebase User Email: " user_email
-        read -p "Enter your timezone (default: Europe/Helsinki): " timezone
-        timezone=${timezone:-"Europe/Helsinki"}
+        read -p "Enter your timezone (default: ${DEFAULT_TIMEZONE}): " timezone
+        timezone=${timezone:-"${DEFAULT_TIMEZONE}"}
         
         cat > "$env_file" << EOL
 FIREBASE_CREDENTIALS_PATH="${data_dir}/firebase/credentials.json"
@@ -80,9 +83,8 @@ FIREBASE_DATABASE_URL="${db_url}"
 FIREBASE_USER_EMAIL="${user_email}"
 TIMEZONE=${timezone}
 EOL
-        print_success ".env file created"
-    else
-        print_success ".env file already exists"
+        
+        print_success "Created .env file"
     fi
 }
 
@@ -106,76 +108,38 @@ setup_firebase() {
     fi
 }
 
-# Main installation process
+# Main installation
 main() {
-    print_step "Checking dependencies..."
+    print_step "Starting installation..."
+    
+    # Check dependencies
     check_dependencies
-    print_success "All dependencies found"
+    
+    # Get data directory
+    data_dir=$(get_data_dir)
     
     # Create necessary directories
-    DATA_DIR="$(get_data_dir)"
-    mkdir -p "$DATA_DIR/data"
-    mkdir -p "$DATA_DIR/firebase"
-    print_success "Directories created at $DATA_DIR"
+    print_step "Creating directories..."
+    mkdir -p "${data_dir}/data"
+    mkdir -p "${data_dir}/firebase"
+    print_success "Created directories"
     
-    # Setup environment and Firebase
-    setup_environment "$DATA_DIR"
-    setup_firebase "$DATA_DIR"
+    # Setup environment
+    setup_environment "$data_dir"
+    setup_firebase "$data_dir"
     
     # Build Docker image
     print_step "Building Docker image..."
-    if ! docker build -t vocab-learning .; then
-        print_error "Failed to build Docker image" "exit"
-    fi
-    print_success "Docker image built successfully"
+    docker build -t vocab-learning .
+    print_success "Built Docker image"
     
-    # Create the vocab command
+    # Create vocab command
     print_step "Creating vocab command..."
-    INSTALL_DIR="$(pwd)"
+    sudo ln -sf "$(pwd)/vocab" /usr/local/bin/vocab
+    print_success "Created vocab command"
     
-    cat > vocab-docker << EOL
-#!/bin/bash
-docker run -it --rm \\
-  -v "$(get_data_dir)":/app/data \\
-  vocab-learning
-EOL
-    chmod +x vocab-docker
-    
-    # Determine the appropriate bin directory and create symlink
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        BIN_DIR="$HOME/bin"
-        mkdir -p "$BIN_DIR"
-        
-        # Add to PATH if needed
-        if ! grep -q "export PATH=\"\$HOME/bin:\$PATH\"" "$HOME/.zshrc" 2>/dev/null; then
-            echo 'export PATH="$HOME/bin:$PATH"' >> "$HOME/.zshrc"
-            print_step "Added ~/bin to PATH in .zshrc"
-            print_step "Please run: source ~/.zshrc"
-        fi
-        
-        ln -sf "$INSTALL_DIR/vocab-docker" "$BIN_DIR/vocab"
-        print_success "Created 'vocab' command in ~/bin"
-    else
-        if sudo -n true 2>/dev/null; then
-            sudo ln -sf "$INSTALL_DIR/vocab-docker" "/usr/local/bin/vocab"
-            print_success "Created 'vocab' command in /usr/local/bin"
-        else
-            print_error "Could not create system-wide command. You can still use: ./vocab-docker"
-        fi
-    fi
-    
-    # Final success message
-    echo
-    echo -e "${GREEN}${BOLD}Installation completed successfully!${NC}"
-    echo
-    echo "Your data will be stored in:"
-    echo "- $DATA_DIR/data/ (vocabulary and progress)"
-    echo "- $DATA_DIR/firebase/ (credentials)"
-    echo "- $DATA_DIR/.env (configuration)"
-    echo
-    echo "To start the vocabulary learning tool, simply run:"
-    echo -e "${BOLD}vocab${NC}"
+    print_success "Installation complete!"
+    echo -e "\nYou can now run the program with the 'vocab' command"
 }
 
-# Run main installation
 main 

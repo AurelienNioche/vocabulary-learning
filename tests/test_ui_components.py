@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from rich.console import Console
 
+from vocabulary_learning.core.constants import VIM_COMMANDS
 from vocabulary_learning.core.ui_components import (
     show_help,
     show_progress,
@@ -60,7 +61,7 @@ class TestUIComponents(unittest.TestCase):
         }
 
         # Sample vim commands
-        self.vim_commands = {":q": "quit program", ":h": "show help", ":s": "show progress"}
+        self.vim_commands = VIM_COMMANDS
 
     def test_show_progress(self):
         """Test progress display."""
