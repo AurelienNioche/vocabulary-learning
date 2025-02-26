@@ -43,7 +43,17 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
    - Subsequent intervals: Calculated using easiness factor
 
 2. **Interval Progression**:
-   - Each successful review increases the interval by the easiness factor
+   - **New Enhanced Algorithm**: Interval calculation now uses actual elapsed time
+   - For successive reviews, the next interval is calculated as:
+     ```
+     next_interval = time_since_last_review * easiness_factor
+     ```
+   - This creates a more adaptive system that adjusts to your real-world study patterns
+   - Benefits:
+     - Accounts for actual review timing rather than theoretical schedules
+     - Naturally adapts to breaks in your study routine
+     - Words reviewed later than scheduled get proportionally longer next intervals
+     - Provides a more personalized learning experience
    - Initial easiness factor: 2.5
    - Successful reviews: Increase factor by 0.1
    - Failed reviews: Decrease factor by 0.2 (minimum 1.3)

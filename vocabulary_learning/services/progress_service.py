@@ -148,8 +148,10 @@ class ProgressService(BaseService):
                     "interval"
                 ] = SECOND_SUCCESS_INTERVAL  # Second success: wait 1 day
             else:
-                # Calculate new interval using easiness factor
-                self.progress[word_id]["interval"] *= self.progress[word_id]["easiness_factor"]
+                # Calculate new interval using easiness factor and actual time since last seen
+                self.progress[word_id]["interval"] = (
+                    hours_since_last * self.progress[word_id]["easiness_factor"]
+                )
 
             # Update easiness factor (increase for correct answers)
             self.progress[word_id]["easiness_factor"] = min(

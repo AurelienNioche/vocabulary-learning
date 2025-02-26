@@ -26,12 +26,15 @@ def get_utc_now():
     return datetime.now(pytz.UTC)
 
 
-def calculate_next_interval(current_interval: float, easiness_factor: float) -> float:
+def calculate_next_interval(
+    current_interval: float, easiness_factor: float, hours_since_last: float = None
+) -> float:
     """Calculate the next review interval based on the SuperMemo 2 algorithm.
 
     Args:
         current_interval: Current interval in hours
         easiness_factor: Current easiness factor
+        hours_since_last: Hours elapsed since the word was last seen
 
     Returns:
         Next interval in hours
@@ -41,7 +44,11 @@ def calculate_next_interval(current_interval: float, easiness_factor: float) -> 
     elif current_interval == FIRST_SUCCESS_INTERVAL:
         return SECOND_SUCCESS_INTERVAL  # Second success: wait 1 day
     else:
-        return current_interval * easiness_factor  # Increase interval based on easiness
+        # If time since last seen is provided and valid, use it instead of current interval
+        if hours_since_last and hours_since_last > 0:
+            return hours_since_last * easiness_factor  # Use actual elapsed time for calculation
+        else:
+            return current_interval * easiness_factor  # Fallback to original algorithm
 
 
 def update_progress(word_id: str, success: bool, progress: Dict, save_callback: Callable) -> None:
@@ -91,6 +98,7 @@ def update_progress(word_id: str, success: bool, progress: Dict, save_callback: 
         progress[word_id]["interval"] = calculate_next_interval(
             progress[word_id]["interval"],
             progress[word_id]["easiness_factor"],
+            hours_since_last,
         )
         # Only increase easiness factor if it's not already at maximum
         if progress[word_id]["easiness_factor"] < INITIAL_EASINESS_FACTOR:

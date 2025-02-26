@@ -156,11 +156,26 @@ class TestProgressTracking(unittest.TestCase):
         update_progress(word_id, True, self.progress, self.save_callback)
         self.assertEqual(self.progress[word_id]["interval"], 24)  # Second success: 1 day
 
-        # Third attempt (success) - should use easiness factor
-        initial_interval = self.progress[word_id]["interval"]
+        # Third attempt (success) - Now uses hours_since_last * easiness_factor
+        # This test is no longer valid with our modified algorithm since we're using elapsed time
+        # instead of the previous interval for progression
+        # In the modified algorithm, the interval will be close to zero because the test
+        # runs quickly and hours_since_last will be very small
         easiness = self.progress[word_id]["easiness_factor"]
-        update_progress(word_id, True, self.progress, self.save_callback)
-        self.assertEqual(self.progress[word_id]["interval"], initial_interval * easiness)
+
+        # Mock the elapsed time to test the new algorithm
+        with patch("vocabulary_learning.core.progress_tracking.get_utc_now") as mock_get_utc_now:
+            # First get the current time
+            current_time = datetime.now(pytz.UTC)
+            # Set up the mock to return a time 10 hours later
+            mock_get_utc_now.return_value = current_time + timedelta(hours=10)
+
+            # Update progress with our mocked time
+            update_progress(word_id, True, self.progress, self.save_callback)
+
+            # With our mocked 10 hour elapsed time, and easiness factor of 2.5 (default)
+            # we expect interval to be approximately 10 * 2.5 = 25 hours
+            self.assertAlmostEqual(self.progress[word_id]["interval"], 10 * easiness, delta=0.1)
 
     def test_failed_attempt(self):
         """Test interval reduction on failed attempt."""
