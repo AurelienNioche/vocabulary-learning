@@ -7,11 +7,13 @@ from unittest.mock import patch
 import pytz
 
 from vocabulary_learning.core.progress_tracking import (
+    MAX_ACTIVE_WORDS,
     calculate_priority,
     calculate_weighted_success_rate,
     count_active_learning_words,
     get_utc_now,
     is_mastered,
+    is_newly_introduced,
     update_progress,
 )
 
@@ -198,7 +200,7 @@ class TestProgressTracking(unittest.TestCase):
         self.assertEqual(priority, 0.8)
 
         # Test when at max active words
-        priority = calculate_priority(None, active_words_count=8)
+        priority = calculate_priority(None, active_words_count=MAX_ACTIVE_WORDS)
         self.assertEqual(priority, 0.0)
 
     def test_calculate_priority_existing_word(self):
@@ -312,6 +314,53 @@ class TestProgressTracking(unittest.TestCase):
         # Failure decreases EF
         update_progress(word_id, False, self.progress, self.save_callback)
         self.assertLess(self.progress[word_id]["easiness_factor"], 2.1)
+
+    def test_easiness_factor_max_limit(self):
+        """Test that easiness factor is properly adjusted based on success/failure."""
+        # Initialize a word
+        update_progress("word1", True, self.progress, self.save_callback)
+        initial_ef = self.progress["word1"]["easiness_factor"]
+
+        # Success should increase the factor (but not above initial)
+        update_progress("word1", True, self.progress, self.save_callback)
+        self.assertEqual(self.progress["word1"]["easiness_factor"], initial_ef)  # Already at max
+
+        # Failure should decrease the factor
+        update_progress("word1", False, self.progress, self.save_callback)
+        self.assertLess(self.progress["word1"]["easiness_factor"], initial_ef)
+
+    def test_word_introduction_tracking(self):
+        """Test that a word's first introduction date is recorded."""
+        # Mock the current time to ensure stable test results
+        mock_time = datetime(2023, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+
+        with patch(
+            "vocabulary_learning.core.progress_tracking.get_utc_now", return_value=mock_time
+        ):
+            # Initialize a new word
+            update_progress("new_word", True, self.progress, self.save_callback)
+
+            # Check that first_introduced date is set
+            self.assertIn("first_introduced", self.progress["new_word"])
+            self.assertEqual(self.progress["new_word"]["first_introduced"], mock_time.isoformat())
+
+            # Check is_newly_introduced returns True for a word with one attempt
+            self.assertTrue(is_newly_introduced(self.progress["new_word"]))
+
+            # Update the same word again
+            later_time = mock_time + timedelta(days=1)
+            with patch(
+                "vocabulary_learning.core.progress_tracking.get_utc_now", return_value=later_time
+            ):
+                update_progress("new_word", True, self.progress, self.save_callback)
+
+                # Check first_introduced still has the original date
+                self.assertEqual(
+                    self.progress["new_word"]["first_introduced"], mock_time.isoformat()
+                )
+
+                # Check is_newly_introduced now returns False
+                self.assertFalse(is_newly_introduced(self.progress["new_word"]))
 
 
 if __name__ == "__main__":

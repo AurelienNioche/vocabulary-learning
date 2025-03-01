@@ -65,7 +65,7 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
      - Failed words get +0.3 priority bonus
      - Overdue words can have priority > 1.0
    - For new words:
-     - Priority = 0.8 if below MAX_ACTIVE_WORDS (8)
+     - Priority = 0.8 if below MAX_ACTIVE_WORDS (20)
      - Priority = 0.0 if at MAX_ACTIVE_WORDS
    - This ensures:
      - Overdue words (ratio > 1.0) take highest priority
@@ -73,7 +73,7 @@ The tool uses an enhanced version of the SuperMemo 2 algorithm for optimal learn
      - New words come next (0.8) when below limit
      - Non-due words have lowest priority
    - Active word management:
-     - Maximum 8 active words at a time
+     - Maximum 20 active words at a time
      - Word is "active" if it has attempts but isn't mastered
      - New words only introduced when below limit
      - Mastered words don't count toward limit
@@ -122,7 +122,7 @@ The system uses several key functions to manage learning progress:
      ```
    - For new words:
      ```
-     if active_words < 8:
+     if active_words < 20:
          priority = 0.8
      else:
          priority = 0.0
@@ -133,7 +133,7 @@ The system uses several key functions to manage learning progress:
    - Word is "active" if:
      - Has at least one attempt
      - Not yet mastered (< 5 successes or < 80% success rate)
-   - System maintains maximum 8 active words
+   - System maintains maximum 20 active words
    - New words only introduced when below limit
 
 ### Vim-like Commands

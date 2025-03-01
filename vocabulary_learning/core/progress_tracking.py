@@ -73,6 +73,7 @@ def update_progress(word_id: str, success: bool, progress: Dict, save_callback: 
             "review_intervals": [],
             "easiness_factor": INITIAL_EASINESS_FACTOR,
             "attempt_history": [],
+            "first_introduced": now.isoformat(),  # Track first introduction date
         }
 
     # Calculate time since last review
@@ -235,25 +236,32 @@ def is_mastered(word_data: Dict) -> bool:
 
 
 def count_active_learning_words(progress_data: Dict) -> int:
-    """Count how many words are being actively learned.
-
-    A word is considered "active" if it hasn't been mastered yet.
+    """Count the number of words actively being learned.
 
     Args:
-        progress_data: Dictionary of word progress data
+        progress_data: Progress data dictionary
 
     Returns:
         Number of active words
     """
-    active_count = 0
+    return sum(
+        1
+        for word_id, data in progress_data.items()
+        if not is_mastered(data) and data["attempts"] > 0
+    )
 
-    for word_data in progress_data.values():
-        # Skip if no attempts
-        if word_data.get("attempts", 0) == 0:
-            continue
 
-        # A word is active if it's not mastered
-        if not is_mastered(word_data):
-            active_count += 1
+def is_newly_introduced(word_data: Dict) -> bool:
+    """Check if a word was just introduced for the first time.
 
-    return active_count
+    A word is considered newly introduced if it has only one attempt in its history.
+
+    Args:
+        word_data: Word progress data
+
+    Returns:
+        True if the word was just introduced, False otherwise
+    """
+    if "attempts" not in word_data:
+        return False
+    return word_data["attempts"] == 1
