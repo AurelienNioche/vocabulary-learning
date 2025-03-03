@@ -249,31 +249,21 @@ vocab
 - View statistics and examples
 - Track your progress
 
-4. Utility Scripts:
-- View learning progress statistics:
-  ```bash
-  python -m vocabulary_learning.utils.count_stats
-  ```
-  This will show:
-  - Total words being tracked
-  - Active (non-mastered) words
-  - Mastered words
-  
-  For detailed word-by-word statistics:
-  ```bash
-  python -m vocabulary_learning.utils.count_stats --items
-  ```
-  This shows for each attempted word:
-  - Number of successful attempts
-  - Total number of attempts
-  - Raw success rate
-  - Weighted success rate (recent attempts weighted more heavily)
-  - Mastery status
+4. Utility Commands:
 
-  You can also specify a custom progress file:
-  ```bash
-  python -m vocabulary_learning.utils.count_stats --progress-file path/to/progress.json
-  ```
+Add a new definition to an existing word:
+```bash
+python -m vocabulary_learning.utils.add_definition WORD_ID DEFINITION
+```
+Example:
+```bash
+python -m vocabulary_learning.utils.add_definition 000037 "avoir un lien"
+```
+This will:
+- Show the current word entry
+- Add the new definition if it doesn't exist
+- Update both local file and Firebase
+- Show the updated entry
 
 ## Adding Vocabulary
 

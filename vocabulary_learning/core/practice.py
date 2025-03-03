@@ -70,6 +70,8 @@ def practice_mode(
         return
 
     console.print("\n[bold]Practice Mode[/bold]\n")
+    start_time = datetime.now()
+    question_counter = 1
 
     # Verify progress data
     mastered_count = 0
@@ -100,6 +102,16 @@ def practice_mode(
     console.print(" • ".join(f"[blue]{cmd}[/blue] {desc}" for cmd, desc in VIM_COMMANDS.items()))
 
     while True:
+        # Display elapsed time
+        elapsed_time = datetime.now() - start_time
+        total_seconds = int(elapsed_time.total_seconds())
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        if minutes == 0:
+            console.print(f"\n[dim]Time elapsed: {seconds}s[/dim]")
+        else:
+            console.print(f"\n[dim]Time elapsed: {minutes}min{seconds}s[/dim]")
+
         # Select a word to practice
         word_pair = select_word(vocabulary, progress, console)
         if word_pair is None:
@@ -128,10 +140,10 @@ def practice_mode(
             # Show the Japanese word (with kanji if available)
             if kanji:
                 console.print(
-                    f"\n[bold cyan][Q][/bold cyan] {japanese} [[bold magenta]{kanji}[/bold magenta]]"
+                    f"\n[bold cyan][Q{question_counter}][/bold cyan] {japanese} [[bold magenta]{kanji}[/bold magenta]]"
                 )
             else:
-                console.print(f"\n[bold cyan][Q][/bold cyan] {japanese}")
+                console.print(f"\n[bold cyan][Q{question_counter}][/bold cyan] {japanese}")
 
             # Get user's answer
             while True:
@@ -210,6 +222,7 @@ def practice_mode(
                     console.print("\n[yellow]Let's try again![/yellow]")
                     break
 
+        question_counter += 1
         console.print("\n[dim]• ─────────────────────── •[/dim]")  # Add decorative separator
 
 
