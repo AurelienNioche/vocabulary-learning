@@ -2,6 +2,8 @@
 
 A command-line tool for learning Japanese vocabulary with spaced repetition and Firebase integration.
 
+> **Note**: A visual interface (frontend) is currently under development and not yet available for general use. For now, please use the command-line interface described below.
+
 [![Tests](https://github.com/AurelienNioche/vocabulary-learning/actions/workflows/test.yml/badge.svg)](https://github.com/AurelienNioche/vocabulary-learning/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/AurelienNioche/vocabulary-learning/branch/main/graph/badge.svg)](https://codecov.io/gh/AurelienNioche/vocabulary-learning)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
