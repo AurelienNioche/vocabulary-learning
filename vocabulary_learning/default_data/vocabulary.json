@@ -1,0 +1,14 @@
+{
+    "word_000001": {
+        "hiragana": "こんにちは",
+        "kanji": "今日は",
+        "french": "bonjour",
+        "example_sentence": "こんにちは、元気ですか？"
+    },
+    "word_000002": {
+        "hiragana": "さようなら",
+        "kanji": "さようなら",
+        "french": "au revoir",
+        "example_sentence": "さようなら、また会いましょう。"
+    }
+} 

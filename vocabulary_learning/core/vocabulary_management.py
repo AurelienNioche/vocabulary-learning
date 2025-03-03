@@ -3,95 +3,141 @@
 import json
 import os
 from datetime import datetime
+from typing import Any, Callable
 
+import pandas as pd
+from rich.console import Console
 from rich.prompt import Confirm
 
+from vocabulary_learning.core.file_operations import save_vocabulary
 
-def add_vocabulary(vocab_file, vocabulary, vocab_ref, console, load_vocabulary_fn):
-    """Add new vocabulary interactively."""
-    print("\nAdd New Vocabulary")
-    print("Enter 'q' to return to menu")
+
+def add_vocabulary(
+    vocabulary: pd.DataFrame,
+    vocab_file: str,
+    vocab_ref: Any,
+    console: Console,
+    load_vocabulary: Callable,
+    japanese_converter: Any = None,
+    vim_commands: dict = None,
+) -> None:
+    """Add new vocabulary words.
+
+    Args:
+        vocabulary: Current vocabulary DataFrame
+        vocab_file: Path to vocabulary file
+        vocab_ref: Firebase reference for vocabulary
+        console: Console for output
+        load_vocabulary: Function to reload vocabulary
+        japanese_converter: Optional JapaneseTextConverter instance for text conversion
+        vim_commands: Dictionary of available Vim-like commands
+    """
+    console.print("\n[bold blue]Add New Vocabulary[/bold blue]")
+    console.print()  # Add empty line
+    console.print("[dim]Available commands:[/dim]")
+    console.print("[blue]:m[/blue] menu • [blue]:q[/blue] quit")
+    console.print()  # Add empty line
 
     while True:
-        # Get Japanese word
-        japanese = input("\nEnter Japanese word (hiragana): ").strip()
-        if japanese.lower() == "q":
+        # Get word details
+        japanese = input("Japanese (hiragana): ").strip()
+        if japanese.lower() == ":m":
             break
-
-        # Get kanji (optional)
-        kanji = input("Enter kanji (optional): ").strip()
-        if kanji.lower() == "q":
-            break
-
-        # Get French translation
-        french = input("Enter French translation: ").strip()
-        if french.lower() == "q":
-            break
-
-        # Get example sentence (optional)
-        example = input("Enter example sentence (optional): ").strip()
-        if example.lower() == "q":
-            break
-
-        # Validate input
-        if not japanese or not french:
-            console.print("[red]Japanese word and French translation are required![/red]")
+        elif japanese.lower() == ":q":
+            raise SystemExit
+        elif not japanese:  # Skip empty input
             continue
 
+        # Convert input to hiragana if converter is available and input is not a command
+        if japanese_converter and not japanese.startswith(":"):
+            try:
+                japanese = japanese_converter.to_hiragana(japanese)
+            except Exception as e:
+                console.print(f"[yellow]Warning: Failed to convert text: {str(e)}[/yellow]")
+
         # Check for duplicates
-        if any(vocabulary["japanese"].str.lower() == japanese.lower()):
+        if not vocabulary.empty and any(vocabulary.japanese.str.lower() == japanese.lower()):
             console.print("[red]This word already exists![/red]")
             continue
 
-        try:
-            # Get the next word ID
-            next_id = 1
-            if os.path.exists(vocab_file):
-                with open(vocab_file, "r", encoding="utf-8") as f:
-                    vocab_data = json.load(f)
-                    if vocab_data:
-                        next_id = (
-                            max(int(word_id.split("_")[1]) for word_id in vocab_data.keys()) + 1
-                        )
-            else:
-                vocab_data = {}
-
-            # Create new word entry
-            new_word = {
-                f"word_{str(next_id).zfill(6)}": {
-                    "hiragana": japanese,
-                    "kanji": kanji if kanji else "",
-                    "french": french,
-                    "example_sentence": example if example else "",
-                }
-            }
-
-            # Update vocabulary data
-            vocab_data.update(new_word)
-
-            # Save to JSON file
-            with open(vocab_file, "w", encoding="utf-8") as f:
-                json.dump(vocab_data, f, ensure_ascii=False, indent=2)
-
-            # Update DataFrame
-            load_vocabulary_fn()
-
-            # Sync to Firebase if available
-            if vocab_ref is not None:
-                try:
-                    vocab_ref.set(vocab_data)
-                    console.print("[green]✓ Word added and synced to Firebase![/green]")
-                except Exception as e:
-                    console.print(
-                        f"[yellow]Word added locally but failed to sync to Firebase: {str(e)}[/yellow]"
-                    )
-            else:
-                console.print("[green]✓ Word added successfully![/green]")
-
-        except Exception as e:
-            console.print(f"[red]Error adding word: {str(e)}[/red]")
+        kanji = input("Kanji (optional): ").strip()
+        french = input("French: ").strip()
+        if not french:  # Skip if French translation is empty
+            console.print("[red]French translation is required![/red]")
             continue
 
+        example = input("Example sentence (optional): ").strip()
+
+        # Load existing vocabulary
+        try:
+            with open(vocab_file, "r", encoding="utf-8") as f:
+                vocab_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            vocab_data = {}
+
+        # Convert old list format to dictionary if needed
+        if isinstance(vocab_data, list):
+            try:
+                vocab_data = {
+                    f"word_{str(i+1).zfill(6)}": {
+                        "hiragana": (
+                            word.get("japanese", word.get("hiragana", ""))
+                            if isinstance(word, dict)
+                            else ""
+                        ),
+                        "kanji": word.get("kanji", "") if isinstance(word, dict) else "",
+                        "french": word.get("french", "") if isinstance(word, dict) else "",
+                        "example_sentence": (
+                            word.get("example_sentence", "") if isinstance(word, dict) else ""
+                        ),
+                    }
+                    for i, word in enumerate(vocab_data)
+                    if isinstance(word, dict)
+                }
+            except (AttributeError, TypeError):
+                vocab_data = {}
+        elif not isinstance(vocab_data, dict):
+            vocab_data = {}
+
+        # Generate new word ID
+        next_id = 1
+        while str(next_id).zfill(6) in vocab_data:
+            next_id += 1
+        word_id = str(next_id).zfill(6)
+
+        # Create new word entry
+        vocab_data[word_id] = {
+            "hiragana": japanese,
+            "kanji": kanji,
+            "french": french,
+            "example_sentence": example,
+        }
+
+        # Save to file
+        with open(vocab_file, "w", encoding="utf-8") as f:
+            json.dump(vocab_data, f, ensure_ascii=False, indent=2)
+        console.print("[dim]Saving to local file... ✓[/dim]")
+
+        # Sync with Firebase
+        if vocab_ref is not None:
+            try:
+                vocab_ref.set(vocab_data)
+                console.print("[dim]Syncing with Firebase... ✓[/dim]")
+            except Exception as e:
+                console.print(f"[red]Failed to sync with Firebase: {str(e)}[/red]")
+
+        # Reload vocabulary
+        try:
+            # Call load_vocabulary with the vocab_file and vocab_ref
+            vocabulary = load_vocabulary(vocab_file, vocab_ref, console)
+            if vocabulary is not None:
+                console.print("[dim]Vocabulary reloaded successfully[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Failed to reload vocabulary: {str(e)}[/yellow]")
+
+        console.print("[green]✓ Word added successfully![/green]")
+
+        # Ask if user wants to add another word
         if not Confirm.ask("Add another word?"):
             break
 

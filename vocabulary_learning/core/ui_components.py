@@ -1,10 +1,19 @@
 """UI components for displaying information and statistics."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import pandas as pd
+from rich.console import Console
 from rich.table import Table
+
+from vocabulary_learning.core.constants import (
+    FAILURE_MARK,
+    MAX_REVIEW_INTERVALS_HISTORY,
+    SUCCESS_MARK,
+)
+from vocabulary_learning.core.text_processing import format_datetime, format_time_interval
 
 
 def show_progress(vocabulary, progress, console):
@@ -18,11 +27,12 @@ def show_progress(vocabulary, progress, console):
     table.add_column("Attempts", justify="right")
     table.add_column("Last Practice", justify="right")
 
-    for _, row in vocabulary.iterrows():
+    for i, row in vocabulary.iterrows():
+        word_id = f"word_{str(i+1).zfill(6)}"
         japanese = row["japanese"]
         kanji = row["kanji"] if pd.notna(row["kanji"]) else ""
         french = row["french"]
-        stats = progress.get(japanese, {"attempts": 0, "successes": 0, "last_seen": "Never"})
+        stats = progress.get(word_id, {"attempts": 0, "successes": 0, "last_seen": "Never"})
 
         attempts = stats["attempts"]
         success_rate = (stats["successes"] / attempts * 100) if attempts > 0 else 0
@@ -58,29 +68,35 @@ def show_progress(vocabulary, progress, console):
 
 def show_word_statistics(word_pair, progress, console):
     """Display statistics for a specific word."""
+    # Get word ID from the word pair
+    word_id = None
+    if hasattr(word_pair, "name") and word_pair.name is not None:
+        word_id = f"word_{str(word_pair.name + 1).zfill(6)}"
+    else:
+        # For words without an index, try to find them in the progress data
+        for progress_id, progress_data in progress.items():
+            if progress_data.get("japanese") == word_pair["japanese"]:
+                word_id = progress_id
+                break
+
     table = Table(title=f"Statistics for {word_pair['japanese']}")
     table.add_column("Information", style="bold")
     table.add_column("Value", style="green")
 
     stats = progress.get(
-        word_pair["japanese"],
+        word_id,
         {"attempts": 0, "successes": 0, "last_seen": "Never", "review_intervals": []},
     )
 
     success_rate = (stats["successes"] / stats["attempts"] * 100) if stats["attempts"] > 0 else 0
     last_seen = stats["last_seen"]
     if last_seen != "Never":
-        last_seen_date = datetime.fromisoformat(last_seen)
-        days_ago = (datetime.now() - last_seen_date).days
-        if days_ago == 0:
-            last_seen = "Today"
-        elif days_ago == 1:
-            last_seen = "Yesterday"
-        else:
-            last_seen = f"{days_ago} days ago"
+        last_seen = format_datetime(last_seen)
 
     # Calculate average interval between reviews
-    intervals = stats.get("review_intervals", [])
+    intervals = stats.get("review_intervals", [])[
+        -MAX_REVIEW_INTERVALS_HISTORY:
+    ]  # Only use last N intervals
     avg_interval = sum(intervals) / len(intervals) if intervals else 0
 
     table.add_row("Japanese", word_pair["japanese"])
@@ -93,10 +109,14 @@ def show_word_statistics(word_pair, progress, console):
     table.add_row("Failed Attempts", str(stats["attempts"] - stats["successes"]))
     table.add_row("Last Practice", last_seen)
     if avg_interval > 0:
-        if avg_interval < 24:
-            table.add_row("Average Review Interval", f"{avg_interval:.1f} hours")
-        else:
-            table.add_row("Average Review Interval", f"{avg_interval/24:.1f} days")
+        table.add_row("Average Review Interval", format_time_interval(avg_interval))
+
+    # Add attempt history if available
+    if "attempt_history" in stats and stats["attempt_history"]:
+        history = ""
+        for attempt in stats["attempt_history"]:
+            history += SUCCESS_MARK if attempt["success"] else FAILURE_MARK
+        table.add_row("Attempt History", history)
 
     console.print(table)
 

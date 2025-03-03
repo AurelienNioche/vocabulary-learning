@@ -36,7 +36,7 @@ def convert_csv_to_json():
         }
 
         # Create data directory if it doesn't exist
-        data_dir = Path("data")
+        data_dir = Path("vocabulary_learning/data")
         data_dir.mkdir(exist_ok=True)
 
         # Save to JSON file

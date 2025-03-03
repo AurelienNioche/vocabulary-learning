@@ -1,110 +1,82 @@
+"""Script to sync local data with Firebase."""
+
 import json
 import os
 from pathlib import Path
 
-import firebase_admin
 from dotenv import load_dotenv
-from firebase_admin import auth, credentials, db
 from rich.console import Console
-from rich.prompt import Confirm
+from rich.panel import Panel
+
+from vocabulary_learning.core.firebase_config import initialize_firebase
 
 
 def sync_to_firebase():
+    """Sync local vocabulary and progress data with Firebase."""
     console = Console()
-    console.print("\n[bold blue]=== Starting Firebase Sync ===[/bold blue]")
-
-    # Load environment variables
-    load_dotenv()
-    cred_path = os.path.expandvars(os.getenv("FIREBASE_CREDENTIALS_PATH"))
-
-    if not os.path.exists(cred_path):
-        console.print(f"[red]Error: Firebase credentials not found at {cred_path}[/red]")
-        console.print(
-            "[yellow]Please make sure you have set up Firebase credentials correctly.[/yellow]"
+    console.print(
+        Panel.fit(
+            "[bold blue]Firebase Sync[/bold blue]\n\n"
+            "This will:\n"
+            "1. Load local vocabulary and progress data\n"
+            "2. Push data to Firebase\n"
+            "3. Verify the sync",
+            title="Firebase Sync",
+            border_style="blue",
         )
+    )
+
+    # Get data directory
+    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    if not data_dir.exists():
+        console.print(f"[red]Data directory not found at {data_dir}[/red]")
+        return
+
+    # Load vocabulary data
+    vocab_path = data_dir / "vocabulary.json"
+    if not vocab_path.exists():
+        console.print("[red]Error: vocabulary.json not found![/red]")
+        return
+
+    # Load progress data
+    progress_path = data_dir / "progress.json"
+    if not progress_path.exists():
+        console.print("[red]Error: progress.json not found![/red]")
         return
 
     try:
+        with open(vocab_path, "r", encoding="utf-8") as f:
+            vocabulary = json.load(f)
+        with open(progress_path, "r", encoding="utf-8") as f:
+            progress = json.load(f)
+
         # Initialize Firebase
-        try:
-            app = firebase_admin.get_app()
-            console.print("[dim]Using existing Firebase connection[/dim]")
-        except ValueError:
-            console.print("[dim]Initializing new Firebase connection...[/dim]")
-            cred = credentials.Certificate(cred_path)
-            app = firebase_admin.initialize_app(
-                cred, {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")}
-            )
+        load_dotenv()
+        progress_ref, vocabulary_ref = initialize_firebase(
+            console=console,
+            env_file=str(
+                Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/.env"))
+            ),
+        )
 
-        # Get user credentials
-        email = os.getenv("FIREBASE_USER_EMAIL")
-        password = os.getenv("FIREBASE_USER_PASSWORD")
-
-        if not email or not password:
-            console.print("[red]Error: Firebase user credentials not found in .env file[/red]")
-            console.print(
-                "[yellow]Please set FIREBASE_USER_EMAIL and FIREBASE_USER_PASSWORD in your .env file[/yellow]"
-            )
+        if not progress_ref or not vocabulary_ref:
+            console.print("[red]Failed to initialize Firebase connection[/red]")
             return
 
-        # Get user ID
-        try:
-            user = auth.get_user_by_email(email)
-            user_id = user.uid
-            console.print(f"[dim]Authenticated as: {email}[/dim]")
-        except auth.UserNotFoundError:
-            console.print(f"[red]Error: User not found: {email}[/red]")
-            return
+        # Push data to Firebase
+        console.print("[dim]Pushing vocabulary data...[/dim]", end="")
+        vocabulary_ref.set(vocabulary)
+        console.print("[green] ✓[/green]")
 
-        # Set up database references
-        vocab_ref = db.reference(f"/vocabulary/{user_id}")
+        console.print("[dim]Pushing progress data...[/dim]", end="")
+        progress_ref.set(progress)
+        console.print("[green] ✓[/green]")
 
-        # Read local vocabulary
-        json_path = Path("data/vocabulary.json")
-        if not json_path.exists():
-            console.print("[red]Error: vocabulary.json not found[/red]")
-            console.print(
-                "[yellow]Please make sure you have a vocabulary file in the data directory.[/yellow]"
-            )
-            return
-
-        with open(json_path, "r", encoding="utf-8") as f:
-            vocab_data = json.load(f)
-
-        # Confirm sync if there's existing data
-        existing_data = vocab_ref.get()
-        if existing_data:
-            if not Confirm.ask(
-                "[yellow]Existing data found in Firebase. Do you want to overwrite it?[/yellow]"
-            ):
-                console.print("[yellow]Operation cancelled.[/yellow]")
-                return
-
-        # Upload to Firebase
-        console.print("[dim]Uploading vocabulary to Firebase...[/dim]")
-        vocab_ref.set(vocab_data)
-
-        # Verify upload
-        uploaded_data = vocab_ref.get()
-        if not uploaded_data:
-            raise Exception("Failed to verify uploaded data")
-
-        # Compare word counts
-        local_count = len(vocab_data)
-        uploaded_count = len(uploaded_data)
-
-        if local_count != uploaded_count:
-            console.print(
-                f"[yellow]Warning: Word count mismatch. Local: {local_count}, Firebase: {uploaded_count}[/yellow]"
-            )
-            console.print("[yellow]Please verify your data and try again if needed.[/yellow]")
-        else:
-            console.print(f"[green]✓ Successfully synced {local_count} words to Firebase![/green]")
-            console.print("[dim]Your vocabulary is now backed up in the cloud.[/dim]")
+        console.print("\n[green]✓ Successfully synced data with Firebase[/green]")
 
     except Exception as e:
-        console.print(f"[red]Error during Firebase sync: {str(e)}[/red]")
-        console.print("[yellow]Please check your Firebase configuration and try again.[/yellow]")
+        console.print(f"[red]Error syncing with Firebase: {str(e)}[/red]")
+        return
 
 
 if __name__ == "__main__":

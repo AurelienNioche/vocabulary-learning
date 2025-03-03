@@ -43,7 +43,7 @@ def reset_progress():
     cred_path = os.path.expandvars(os.getenv("FIREBASE_CREDENTIALS_PATH"))
 
     # Reset local progress file
-    progress_path = Path("data/progress.json")
+    progress_path = Path("vocabulary_learning/data/progress.json")
     if progress_path.exists():
         try:
             # Create backup before deleting
