@@ -358,7 +358,7 @@ def check_answer(user_answer, correct_answer):
             formatted_answers = format_multiple_answers(correct_answers)
             return (
                 True,
-                f"[yellow]Note: Any of these answers would be correct: {formatted_answers}[/yellow]",
+                f"[dim]Note: Any of these answers would be correct: {formatted_answers}[/dim]",
             )
         return True, None
 
