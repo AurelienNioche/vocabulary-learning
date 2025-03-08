@@ -26,7 +26,9 @@ class VocabularyService(BaseService):
             console: Rich console for output (optional)
         """
         super().__init__(console)
-        self.vocabulary_file = str(vocabulary_file or self.get_data_file("vocabulary.json"))
+        self.vocabulary_file = str(
+            vocabulary_file or self.get_data_file("vocabulary.json")
+        )
         self.vocabulary_ref = vocabulary_ref
 
         # Load initial vocabulary
@@ -40,7 +42,9 @@ class VocabularyService(BaseService):
                 vocabulary = self.vocabulary_ref.get() or {}
                 return vocabulary
             except Exception as e:
-                self.console.print(f"[yellow]Failed to load from Firebase: {str(e)}[/yellow]")
+                self.console.print(
+                    f"[yellow]Failed to load from Firebase: {str(e)}[/yellow]"
+                )
                 self.console.print("[yellow]Falling back to local file...[/yellow]")
 
         # Fallback to local file
@@ -60,8 +64,12 @@ class VocabularyService(BaseService):
             try:
                 self.vocabulary_ref.set(self.vocabulary)
             except Exception as e:
-                self.console.print(f"[yellow]Failed to save to Firebase: {str(e)}[/yellow]")
-                self.console.print("[yellow]Vocabulary saved to local file only.[/yellow]")
+                self.console.print(
+                    f"[yellow]Failed to save to Firebase: {str(e)}[/yellow]"
+                )
+                self.console.print(
+                    "[yellow]Vocabulary saved to local file only.[/yellow]"
+                )
 
     def add_word(
         self,
@@ -76,7 +84,8 @@ class VocabularyService(BaseService):
             translations: List of French translations
             example_sentences: Optional list of (Japanese, French) example sentence pairs
 
-        Returns:
+        Returns
+        -------
             bool: True if word was added successfully
         """
         # Format and validate the word entry
@@ -96,7 +105,8 @@ class VocabularyService(BaseService):
         Args:
             word_id: The word ID (e.g., 'word_000001')
 
-        Returns:
+        Returns
+        -------
             Dictionary containing word details including hiragana
         """
         entry = self.vocabulary.get(word_id)
@@ -112,7 +122,8 @@ class VocabularyService(BaseService):
     def get_all_words(self) -> List[str]:
         """Get list of all words in vocabulary.
 
-        Returns:
+        Returns
+        -------
             List of word IDs
         """
         return list(self.vocabulary.keys())
@@ -123,7 +134,8 @@ class VocabularyService(BaseService):
         Args:
             word_id: The word ID (e.g., 'word_000001')
 
-        Returns:
+        Returns
+        -------
             Complete word entry with all details
         """
         return self.vocabulary.get(word_id)
@@ -131,7 +143,8 @@ class VocabularyService(BaseService):
     def delete_word(self, word: str) -> bool:
         """Delete a word from the vocabulary.
 
-        Returns:
+        Returns
+        -------
             bool: True if word was deleted successfully
         """
         if word in self.vocabulary:
@@ -153,7 +166,8 @@ class VocabularyService(BaseService):
             translations: New list of translations (if None, keep existing)
             example_sentences: New list of example sentences (if None, keep existing)
 
-        Returns:
+        Returns
+        -------
             bool: True if word was updated successfully
         """
         if word not in self.vocabulary:
@@ -187,7 +201,8 @@ class VocabularyService(BaseService):
         Args:
             query: Search string
 
-        Returns:
+        Returns
+        -------
             List of matching words
         """
         query = query.lower()

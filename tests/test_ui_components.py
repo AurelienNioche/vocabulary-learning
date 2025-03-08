@@ -107,7 +107,9 @@ class TestUIComponents(unittest.TestCase):
         # Check if save information is present
         self.assertIn("Auto-save Status", output)
         self.assertIn("test_progress.json", output)  # File name
-        self.assertIn("Words Tracked", output)  # Check for header instead of specific count
+        self.assertIn(
+            "Words Tracked", output
+        )  # Check for header instead of specific count
 
     def test_show_help(self):
         """Test help display."""
@@ -134,7 +136,9 @@ class TestUIComponents(unittest.TestCase):
 
     def test_word_statistics_with_missing_progress(self):
         """Test word statistics for word without progress data."""
-        word_pair = pd.Series({"japanese": "新しい", "kanji": "新しい", "french": "nouveau"})
+        word_pair = pd.Series(
+            {"japanese": "新しい", "kanji": "新しい", "french": "nouveau"}
+        )
 
         with self.console.capture() as capture:
             show_word_statistics(word_pair, self.progress, self.console)

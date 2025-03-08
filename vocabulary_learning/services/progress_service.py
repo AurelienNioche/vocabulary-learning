@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
-import pytz
 from firebase_admin import db
 from rich.console import Console
 
@@ -21,7 +20,6 @@ from vocabulary_learning.core.constants import (
 from vocabulary_learning.core.progress_tracking import (
     calculate_priority,
     count_active_learning_words,
-    is_mastered,
 )
 from vocabulary_learning.services.base_service import BaseService
 
@@ -55,7 +53,9 @@ class ProgressService(BaseService):
                 progress = self.progress_ref.get() or {}
                 return progress
             except Exception as e:
-                self.console.print(f"[yellow]Failed to load from Firebase: {str(e)}[/yellow]")
+                self.console.print(
+                    f"[yellow]Failed to load from Firebase: {str(e)}[/yellow]"
+                )
                 self.console.print("[yellow]Falling back to local file...[/yellow]")
 
         # Fallback to local file
@@ -85,8 +85,12 @@ class ProgressService(BaseService):
             try:
                 self.progress_ref.set(self.progress)
             except Exception as e:
-                self.console.print(f"[yellow]Failed to save to Firebase: {str(e)}[/yellow]")
-                self.console.print("[yellow]Progress saved to local file only.[/yellow]")
+                self.console.print(
+                    f"[yellow]Failed to save to Firebase: {str(e)}[/yellow]"
+                )
+                self.console.print(
+                    "[yellow]Progress saved to local file only.[/yellow]"
+                )
 
     def update_progress(self, word_id: str, success: bool):
         """Update progress for a given word.
@@ -112,9 +116,9 @@ class ProgressService(BaseService):
             self.progress[word_id]["easiness_factor"] = self.progress[word_id].get(
                 "easiness_factor", INITIAL_EASINESS_FACTOR
             )
-            self.progress[word_id]["last_attempt_was_failure"] = self.progress[word_id].get(
-                "last_attempt_was_failure", False
-            )
+            self.progress[word_id]["last_attempt_was_failure"] = self.progress[
+                word_id
+            ].get("last_attempt_was_failure", False)
 
         # Calculate and store interval since last review
         last_seen = datetime.fromisoformat(self.progress[word_id]["last_seen"])
@@ -122,10 +126,13 @@ class ProgressService(BaseService):
         self.progress[word_id]["review_intervals"].append(hours_since_last)
 
         # Keep only last MAX_REVIEW_INTERVALS_HISTORY intervals
-        if len(self.progress[word_id]["review_intervals"]) > MAX_REVIEW_INTERVALS_HISTORY:
-            self.progress[word_id]["review_intervals"] = self.progress[word_id]["review_intervals"][
-                -MAX_REVIEW_INTERVALS_HISTORY:
-            ]
+        if (
+            len(self.progress[word_id]["review_intervals"])
+            > MAX_REVIEW_INTERVALS_HISTORY
+        ):
+            self.progress[word_id]["review_intervals"] = self.progress[word_id][
+                "review_intervals"
+            ][-MAX_REVIEW_INTERVALS_HISTORY:]
 
         self.progress[word_id]["attempts"] += 1
 
@@ -140,13 +147,13 @@ class ProgressService(BaseService):
             self.progress[word_id]["successes"] += 1
             # Update SuperMemo 2 parameters
             if self.progress[word_id]["interval"] == 0:
-                self.progress[word_id][
-                    "interval"
-                ] = FIRST_SUCCESS_INTERVAL  # First success: wait 2 minutes
+                self.progress[word_id]["interval"] = (
+                    FIRST_SUCCESS_INTERVAL  # First success: wait 2 minutes
+                )
             elif self.progress[word_id]["interval"] == FIRST_SUCCESS_INTERVAL:
-                self.progress[word_id][
-                    "interval"
-                ] = SECOND_SUCCESS_INTERVAL  # Second success: wait 1 day
+                self.progress[word_id]["interval"] = (
+                    SECOND_SUCCESS_INTERVAL  # Second success: wait 1 day
+                )
             else:
                 # Calculate new interval using easiness factor and actual time since last seen
                 self.progress[word_id]["interval"] = (
@@ -161,23 +168,29 @@ class ProgressService(BaseService):
             self.progress[word_id]["last_attempt_was_failure"] = False
         else:
             # Decrease interval and easiness factor for incorrect answers
-            self.progress[word_id]["interval"] = FIRST_SUCCESS_INTERVAL  # Reset to 2 minutes
+            self.progress[word_id]["interval"] = (
+                FIRST_SUCCESS_INTERVAL  # Reset to 2 minutes
+            )
             self.progress[word_id]["easiness_factor"] = max(
-                MIN_EASINESS_FACTOR, self.progress[word_id]["easiness_factor"] - EASINESS_DECREASE
+                MIN_EASINESS_FACTOR,
+                self.progress[word_id]["easiness_factor"] - EASINESS_DECREASE,
             )
             self.progress[word_id]["last_attempt_was_failure"] = True
 
         self.progress[word_id]["last_seen"] = datetime.now().isoformat()
         self.save_progress()
 
-    def get_word_priority(self, word_id: str, active_words_count: Optional[int] = None) -> float:
+    def get_word_priority(
+        self, word_id: str, active_words_count: Optional[int] = None
+    ) -> float:
         """Calculate priority score for a word.
 
         Args:
             word_id: The word ID (e.g., 'word_000001')
             active_words_count: Number of active learning words (optional)
 
-        Returns:
+        Returns
+        -------
             Priority score between 0.0 and 1.0
         """
         if active_words_count is None:
@@ -192,7 +205,8 @@ class ProgressService(BaseService):
         Args:
             word_id: The word ID (e.g., 'word_000001')
 
-        Returns:
+        Returns
+        -------
             Progress data dictionary or None if not found
         """
         return self.progress.get(word_id)
@@ -206,9 +220,7 @@ class ProgressService(BaseService):
         try:
             # Backup current progress
             if create_backup and Path(self.progress_file).exists():
-                backup_file = (
-                    f"{self.progress_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                )
+                backup_file = f"{self.progress_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                 with (
                     open(self.progress_file, "r", encoding="utf-8") as src,
                     open(backup_file, "w", encoding="utf-8") as dst,

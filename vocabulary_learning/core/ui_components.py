@@ -1,11 +1,9 @@
 """UI components for displaying information and statistics."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import pandas as pd
-from rich.console import Console
 from rich.table import Table
 
 from vocabulary_learning.core.constants import (
@@ -13,7 +11,10 @@ from vocabulary_learning.core.constants import (
     MAX_REVIEW_INTERVALS_HISTORY,
     SUCCESS_MARK,
 )
-from vocabulary_learning.core.text_processing import format_datetime, format_time_interval
+from vocabulary_learning.core.text_processing import (
+    format_datetime,
+    format_time_interval,
+)
 
 
 def show_progress(vocabulary, progress, console):
@@ -28,11 +29,13 @@ def show_progress(vocabulary, progress, console):
     table.add_column("Last Practice", justify="right")
 
     for i, row in vocabulary.iterrows():
-        word_id = f"word_{str(i+1).zfill(6)}"
+        word_id = f"word_{str(i + 1).zfill(6)}"
         japanese = row["japanese"]
         kanji = row["kanji"] if pd.notna(row["kanji"]) else ""
         french = row["french"]
-        stats = progress.get(word_id, {"attempts": 0, "successes": 0, "last_seen": "Never"})
+        stats = progress.get(
+            word_id, {"attempts": 0, "successes": 0, "last_seen": "Never"}
+        )
 
         attempts = stats["attempts"]
         success_rate = (stats["successes"] / attempts * 100) if attempts > 0 else 0
@@ -60,7 +63,13 @@ def show_progress(vocabulary, progress, console):
                 last_seen = f"{days_ago} days ago"
 
         table.add_row(
-            japanese, kanji, french, status, f"{success_rate:.0f}%", str(attempts), last_seen
+            japanese,
+            kanji,
+            french,
+            status,
+            f"{success_rate:.0f}%",
+            str(attempts),
+            last_seen,
         )
 
     console.print(table)
@@ -88,7 +97,9 @@ def show_word_statistics(word_pair, progress, console):
         {"attempts": 0, "successes": 0, "last_seen": "Never", "review_intervals": []},
     )
 
-    success_rate = (stats["successes"] / stats["attempts"] * 100) if stats["attempts"] > 0 else 0
+    success_rate = (
+        (stats["successes"] / stats["attempts"] * 100) if stats["attempts"] > 0 else 0
+    )
     last_seen = stats["last_seen"]
     if last_seen != "Never":
         last_seen = format_datetime(last_seen)

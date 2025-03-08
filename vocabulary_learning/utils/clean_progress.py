@@ -52,7 +52,7 @@ def clean_progress():
         console.print(f"[green]✓ Created backup at {backup_path}[/green]")
 
         # Count entries before cleanup
-        total_before = len(progress)
+        len(progress)
 
         # Clean up progress data
         word_id_pattern = re.compile(r"^word_\d{6}$")
@@ -76,7 +76,9 @@ def clean_progress():
                 if new_attempts > old_attempts:
                     # Remove the old entry with less attempts
                     old_id = next(
-                        k for k in progress.keys() if k.lower() == lower_id and k != word_id
+                        k
+                        for k in progress.keys()
+                        if k.lower() == lower_id and k != word_id
                     )
                     duplicates.append((old_id, word_id))
                     del progress[old_id]
@@ -85,7 +87,10 @@ def clean_progress():
                     duplicates.append((word_id, seen_ids[lower_id]["id"]))
                     del progress[word_id]
             else:
-                seen_ids[lower_id] = {"id": word_id, "attempts": progress[word_id]["attempts"]}
+                seen_ids[lower_id] = {
+                    "id": word_id,
+                    "attempts": progress[word_id]["attempts"],
+                }
 
         # Report results
         if invalid_entries:
@@ -105,16 +110,18 @@ def clean_progress():
 
         # Push to Firebase
         if not os.path.exists(cred_path):
-            console.print(f"[red]Error: Firebase credentials not found at {cred_path}[/red]")
+            console.print(
+                f"[red]Error: Firebase credentials not found at {cred_path}[/red]"
+            )
             return
 
         try:
             # Initialize Firebase
             try:
-                app = firebase_admin.get_app()
+                firebase_admin.get_app()
             except ValueError:
                 cred = credentials.Certificate(cred_path)
-                app = firebase_admin.initialize_app(
+                firebase_admin.initialize_app(
                     cred, {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")}
                 )
 

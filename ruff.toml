@@ -1,0 +1,55 @@
+include = ["**/*.py"]
+exclude = []
+target-version = "py310"
+line-length = 88
+
+[lint]
+select = ["E", "F", "W", "C", "I", "D",]
+# E: PEP8 errors, F: PyFlakes, W: PEP8 warnings, C: McCabe complexity, I: Import order (isort), D: Docstrings
+ignore = [
+    "C901",  # Too complex
+    "E741",  # Ambiguous variable name
+    "C408",  # Unnecessary dict() call
+    "F403",  # Star imports
+    "D100",  # Missing docstring in public module
+    "D101", # Missing docstring in public class
+]
+fixable = ["ALL"]
+unfixable = []
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    ".venv*",
+    "venv*",
+    "*.ipynb",
+]
+per-file-ignores = {}
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[lint.pydocstyle]
+convention = "numpy"
+
+[lint.pycodestyle]
+max-line-length = 180
+
+[format]
+exclude = []

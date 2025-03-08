@@ -8,7 +8,10 @@ from difflib import SequenceMatcher
 import pytz
 from dotenv import load_dotenv
 
-from vocabulary_learning.core.constants import DEFAULT_TIMEZONE, TYPO_SIMILARITY_THRESHOLD
+from vocabulary_learning.core.constants import (
+    DEFAULT_TIMEZONE,
+    TYPO_SIMILARITY_THRESHOLD,
+)
 
 
 def normalize_french(text):

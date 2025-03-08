@@ -1,6 +1,5 @@
 """Main entry point for the vocabulary learning tool."""
 
-import os
 import signal
 from datetime import datetime
 from pathlib import Path
@@ -9,15 +8,26 @@ from dotenv import load_dotenv
 from rich.console import Console
 
 from vocabulary_learning.core.constants import ENV_FILE, VIM_COMMANDS
-from vocabulary_learning.core.file_operations import load_progress, load_vocabulary, save_progress
+from vocabulary_learning.core.file_operations import (
+    load_progress,
+    load_vocabulary,
+    save_progress,
+)
 from vocabulary_learning.core.firebase_config import initialize_firebase
 from vocabulary_learning.core.japanese_utils import JapaneseTextConverter
 from vocabulary_learning.core.paths import get_data_dir
 from vocabulary_learning.core.practice import practice_mode
 from vocabulary_learning.core.progress_tracking import update_progress
 from vocabulary_learning.core.signal_handlers import signal_handler
-from vocabulary_learning.core.ui_components import show_help, show_progress, show_word_statistics
-from vocabulary_learning.core.vocabulary_management import add_vocabulary, reset_progress
+from vocabulary_learning.core.ui_components import (
+    show_help,
+    show_progress,
+    show_word_statistics,
+)
+from vocabulary_learning.core.vocabulary_management import (
+    add_vocabulary,
+    reset_progress,
+)
 
 # Get the package root directory
 PACKAGE_ROOT = Path(__file__).parent
@@ -56,10 +66,14 @@ class VocabularyLearner:
 
         # Load data
         self.vocabulary = load_vocabulary(self.vocab_file, self.vocab_ref, self.console)
-        self.progress = load_progress(self.progress_file, self.progress_ref, self.console)
+        self.progress = load_progress(
+            self.progress_file, self.progress_ref, self.console
+        )
 
         # Setup signal handler for graceful exit
-        signal.signal(signal.SIGINT, lambda s, f: signal_handler(s, f, self.save_progress))
+        signal.signal(
+            signal.SIGINT, lambda s, f: signal_handler(s, f, self.save_progress)
+        )
 
         # Initialize commands
         self.vim_commands = VIM_COMMANDS
@@ -68,7 +82,9 @@ class VocabularyLearner:
 
     def save_progress(self):
         """Save learning progress to Firebase and local backup."""
-        save_progress(self.progress, self.progress_file, self.progress_ref, self.console)
+        save_progress(
+            self.progress, self.progress_file, self.progress_ref, self.console
+        )
 
     def run(self):
         """Run the main program loop."""

@@ -119,7 +119,6 @@ class JapaneseTextConverter:
             "ou": "おう",
             "oo": "おう",
             "oh": "おう",
-            "wo": "を",
         }
 
     def romaji_to_hiragana_convert(self, text):
@@ -176,9 +175,13 @@ class JapaneseTextConverter:
 
             # Create conversion results
             conversions = {
-                "hiragana": hiragana if is_romaji else "".join([item["hira"] for item in result]),
+                "hiragana": hiragana
+                if is_romaji
+                else "".join([item["hira"] for item in result]),
                 "katakana": "".join([item["kana"] for item in result]),
-                "romaji": text if is_romaji else "".join([item["hepburn"] for item in result]),
+                "romaji": text
+                if is_romaji
+                else "".join([item["hepburn"] for item in result]),
             }
 
             # If input contains kanji, store it
@@ -187,14 +190,18 @@ class JapaneseTextConverter:
             else:
                 # Try to get kanji suggestion from translator
                 try:
-                    kanji_suggestion = self.translator.translate(text=conversions["hiragana"])
+                    kanji_suggestion = self.translator.translate(
+                        text=conversions["hiragana"]
+                    )
                     if any(
-                        ord(char) >= 0x4E00 and ord(char) <= 0x9FFF for char in kanji_suggestion
+                        ord(char) >= 0x4E00 and ord(char) <= 0x9FFF
+                        for char in kanji_suggestion
                     ):
                         conversions["kanji"] = kanji_suggestion
                     else:
                         conversions["kanji"] = ""
-                except:
+                except Exception as e:
+                    print(f"Warning: Error in kanji conversion: {str(e)}")
                     conversions["kanji"] = ""
 
             return conversions
@@ -205,7 +212,9 @@ class JapaneseTextConverter:
     def suggest_translation(self, text, source_lang="ja", target_lang="fr"):
         """Get translation suggestion using Google Translate."""
         try:
-            translation = self.translator.translate(text, src=source_lang, dest=target_lang)
+            translation = self.translator.translate(
+                text, src=source_lang, dest=target_lang
+            )
             return translation.text
         except Exception as e:
             print(f"Translation service unavailable: {str(e)}")

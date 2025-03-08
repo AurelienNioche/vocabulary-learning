@@ -7,7 +7,6 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 
 
 def fix_duplicates():
@@ -27,7 +26,9 @@ def fix_duplicates():
     )
 
     # Get data directory
-    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    data_dir = Path(
+        os.path.expanduser("~/Library/Application Support/VocabularyLearning/data")
+    )
     if not data_dir.exists():
         console.print(f"[red]Data directory not found at {data_dir}[/red]")
         return

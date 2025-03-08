@@ -1,6 +1,5 @@
 """Base service class for handling data paths."""
 
-import os
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -35,7 +34,8 @@ class BaseService:
         Args:
             filename: Name of the file
 
-        Returns:
+        Returns
+        -------
             Path to the file in the data directory
         """
         user_file = self.data_dir / "data" / filename
@@ -44,10 +44,14 @@ class BaseService:
             package_dir = Path(__file__).parent.parent
             default_file = package_dir / "default_data" / filename
             if default_file.exists():
-                self.console.print(f"[dim]Copying default {filename} to user directory...[/dim]")
+                self.console.print(
+                    f"[dim]Copying default {filename} to user directory...[/dim]"
+                )
                 shutil.copy2(default_file, user_file)
             else:
-                self.console.print(f"[yellow]Warning: No default {filename} found[/yellow]")
+                self.console.print(
+                    f"[yellow]Warning: No default {filename} found[/yellow]"
+                )
                 # Create empty file
                 user_file.write_text("{}")
         return user_file
@@ -58,7 +62,8 @@ class BaseService:
         Args:
             filename: Name of the file
 
-        Returns:
+        Returns
+        -------
             Path to the file in the firebase directory
         """
         return self.data_dir / "firebase" / filename
@@ -66,7 +71,8 @@ class BaseService:
     def get_env_file(self) -> Path:
         """Get path to the .env file.
 
-        Returns:
+        Returns
+        -------
             Path to the .env file
         """
         return self.data_dir / ENV_FILE

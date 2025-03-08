@@ -1,6 +1,5 @@
 """Firebase configuration and initialization."""
 
-import json
 import os
 from pathlib import Path
 

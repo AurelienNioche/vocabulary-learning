@@ -25,7 +25,9 @@ def find_duplicates():
     )
 
     # Get data directory
-    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    data_dir = Path(
+        os.path.expanduser("~/Library/Application Support/VocabularyLearning/data")
+    )
     if not data_dir.exists():
         console.print(f"[red]Data directory not found at {data_dir}[/red]")
         return
@@ -120,10 +122,14 @@ def find_duplicates():
                     f"1: {word1['hiragana']} ({word1['kanji']}) = {word1['french']}\n"
                     f"2: {word2['hiragana']} ({word2['kanji']}) = {word2['french']}"
                 )
-                table.add_row(dup["type"], dup["value"], dup["id1"], dup["id2"], details)
+                table.add_row(
+                    dup["type"], dup["value"], dup["id1"], dup["id2"], details
+                )
 
             console.print(table)
-            console.print(f"\n[yellow]Found {len(duplicates)} duplicate entries[/yellow]")
+            console.print(
+                f"\n[yellow]Found {len(duplicates)} duplicate entries[/yellow]"
+            )
 
             # Check if these entries exist in progress data
             progress_conflicts = []
@@ -134,7 +140,9 @@ def find_duplicates():
                     progress_conflicts.append((dup["id1"], dup["id2"]))
 
             if progress_conflicts:
-                console.print("\n[red]Warning: The following duplicates have progress data:[/red]")
+                console.print(
+                    "\n[red]Warning: The following duplicates have progress data:[/red]"
+                )
                 for id1, id2 in progress_conflicts:
                     console.print(f"[dim]- {id1} and {id2}[/dim]")
                 console.print(

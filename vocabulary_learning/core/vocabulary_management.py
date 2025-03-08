@@ -9,8 +9,6 @@ import pandas as pd
 from rich.console import Console
 from rich.prompt import Confirm
 
-from vocabulary_learning.core.file_operations import save_vocabulary
-
 
 def add_vocabulary(
     vocabulary: pd.DataFrame,
@@ -53,10 +51,14 @@ def add_vocabulary(
             try:
                 japanese = japanese_converter.to_hiragana(japanese)
             except Exception as e:
-                console.print(f"[yellow]Warning: Failed to convert text: {str(e)}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Failed to convert text: {str(e)}[/yellow]"
+                )
 
         # Check for duplicates
-        if not vocabulary.empty and any(vocabulary.japanese.str.lower() == japanese.lower()):
+        if not vocabulary.empty and any(
+            vocabulary.japanese.str.lower() == japanese.lower()
+        ):
             console.print("[red]This word already exists![/red]")
             continue
 
@@ -79,16 +81,22 @@ def add_vocabulary(
         if isinstance(vocab_data, list):
             try:
                 vocab_data = {
-                    f"word_{str(i+1).zfill(6)}": {
+                    f"word_{str(i + 1).zfill(6)}": {
                         "hiragana": (
                             word.get("japanese", word.get("hiragana", ""))
                             if isinstance(word, dict)
                             else ""
                         ),
-                        "kanji": word.get("kanji", "") if isinstance(word, dict) else "",
-                        "french": word.get("french", "") if isinstance(word, dict) else "",
+                        "kanji": word.get("kanji", "")
+                        if isinstance(word, dict)
+                        else "",
+                        "french": word.get("french", "")
+                        if isinstance(word, dict)
+                        else "",
                         "example_sentence": (
-                            word.get("example_sentence", "") if isinstance(word, dict) else ""
+                            word.get("example_sentence", "")
+                            if isinstance(word, dict)
+                            else ""
                         ),
                     }
                     for i, word in enumerate(vocab_data)
@@ -133,7 +141,9 @@ def add_vocabulary(
             if vocabulary is not None:
                 console.print("[dim]Vocabulary reloaded successfully[/dim]")
         except Exception as e:
-            console.print(f"[yellow]Warning: Failed to reload vocabulary: {str(e)}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Failed to reload vocabulary: {str(e)}[/yellow]"
+            )
 
         console.print("[green]✓ Word added successfully![/green]")
 
@@ -144,10 +154,14 @@ def add_vocabulary(
 
 def reset_progress(progress_file, progress_ref, progress, save_progress_fn, console):
     """Reset all learning progress."""
-    if Confirm.ask("[red]Are you sure you want to reset all progress? This cannot be undone[/red]"):
+    if Confirm.ask(
+        "[red]Are you sure you want to reset all progress? This cannot be undone[/red]"
+    ):
         # Backup current progress
         if os.path.exists(progress_file):
-            backup_file = f"{progress_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            backup_file = (
+                f"{progress_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
             try:
                 with (
                     open(progress_file, "r", encoding="utf-8") as src,
@@ -156,7 +170,9 @@ def reset_progress(progress_file, progress_ref, progress, save_progress_fn, cons
                     dst.write(src.read())
                 console.print(f"[dim]Progress backed up to: {backup_file}[/dim]")
             except Exception as e:
-                console.print(f"[yellow]Warning: Could not create backup: {str(e)}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Could not create backup: {str(e)}[/yellow]"
+                )
 
         # Reset progress
         progress.clear()

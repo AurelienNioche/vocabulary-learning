@@ -1,7 +1,6 @@
 """Unit tests for vocabulary core functions."""
 
 import unittest
-from datetime import datetime
 
 from rich.console import Console
 
@@ -17,15 +16,21 @@ class TestVocabulary(unittest.TestCase):
         """Test basic word entry formatting."""
         word = "こんにちは"
         translations = ["bonjour", "salut"]
-        example_sentences = [("こんにちは、元気ですか？", "Bonjour, comment allez-vous ?")]
+        example_sentences = [
+            ("こんにちは、元気ですか？", "Bonjour, comment allez-vous ?")
+        ]
 
         result = format_word_entry(word, translations, example_sentences)
 
         self.assertIsInstance(result, dict)
         self.assertEqual(result["translations"], translations)
         self.assertEqual(len(result["example_sentences"]), 1)
-        self.assertEqual(result["example_sentences"][0]["jp"], "こんにちは、元気ですか？")
-        self.assertEqual(result["example_sentences"][0]["fr"], "Bonjour, comment allez-vous ?")
+        self.assertEqual(
+            result["example_sentences"][0]["jp"], "こんにちは、元気ですか？"
+        )
+        self.assertEqual(
+            result["example_sentences"][0]["fr"], "Bonjour, comment allez-vous ?"
+        )
 
     def test_format_word_entry_multiple_examples(self):
         """Test word entry formatting with multiple example sentences."""
@@ -40,9 +45,13 @@ class TestVocabulary(unittest.TestCase):
 
         self.assertEqual(len(result["example_sentences"]), 2)
         self.assertEqual(result["example_sentences"][0]["jp"], "新しい車を買いました。")
-        self.assertEqual(result["example_sentences"][0]["fr"], "J'ai acheté une nouvelle voiture.")
+        self.assertEqual(
+            result["example_sentences"][0]["fr"], "J'ai acheté une nouvelle voiture."
+        )
         self.assertEqual(result["example_sentences"][1]["jp"], "これは新しいですか？")
-        self.assertEqual(result["example_sentences"][1]["fr"], "Est-ce que c'est nouveau ?")
+        self.assertEqual(
+            result["example_sentences"][1]["fr"], "Est-ce que c'est nouveau ?"
+        )
 
     def test_format_word_entry_empty_examples(self):
         """Test word entry formatting with no example sentences."""
@@ -60,7 +69,10 @@ class TestVocabulary(unittest.TestCase):
         entry = {
             "translations": ["bonjour", "salut"],
             "example_sentences": [
-                {"jp": "こんにちは、元気ですか？", "fr": "Bonjour, comment allez-vous ?"}
+                {
+                    "jp": "こんにちは、元気ですか？",
+                    "fr": "Bonjour, comment allez-vous ?",
+                }
             ],
         }
 
@@ -76,7 +88,10 @@ class TestVocabulary(unittest.TestCase):
         # Missing translations
         entry1 = {
             "example_sentences": [
-                {"jp": "こんにちは、元気ですか？", "fr": "Bonjour, comment allez-vous ?"}
+                {
+                    "jp": "こんにちは、元気ですか？",
+                    "fr": "Bonjour, comment allez-vous ?",
+                }
             ]
         }
         self.assertFalse(validate_word_entry(entry1))
@@ -91,7 +106,10 @@ class TestVocabulary(unittest.TestCase):
         entry1 = {
             "translations": [],
             "example_sentences": [
-                {"jp": "こんにちは、元気ですか？", "fr": "Bonjour, comment allez-vous ?"}
+                {
+                    "jp": "こんにちは、元気ですか？",
+                    "fr": "Bonjour, comment allez-vous ?",
+                }
             ],
         }
         self.assertFalse(validate_word_entry(entry1))
@@ -100,7 +118,10 @@ class TestVocabulary(unittest.TestCase):
         entry2 = {
             "translations": [123, "bonjour"],
             "example_sentences": [
-                {"jp": "こんにちは、元気ですか？", "fr": "Bonjour, comment allez-vous ?"}
+                {
+                    "jp": "こんにちは、元気ですか？",
+                    "fr": "Bonjour, comment allez-vous ?",
+                }
             ],
         }
         self.assertFalse(validate_word_entry(entry2))
@@ -109,7 +130,10 @@ class TestVocabulary(unittest.TestCase):
         entry3 = {
             "translations": ["bonjour", ""],
             "example_sentences": [
-                {"jp": "こんにちは、元気ですか？", "fr": "Bonjour, comment allez-vous ?"}
+                {
+                    "jp": "こんにちは、元気ですか？",
+                    "fr": "Bonjour, comment allez-vous ?",
+                }
             ],
         }
         self.assertFalse(validate_word_entry(entry3))

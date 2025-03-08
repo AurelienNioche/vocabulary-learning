@@ -11,7 +11,6 @@ from vocabulary_learning.core.progress_tracking import (
     calculate_priority,
     calculate_weighted_success_rate,
     count_active_learning_words,
-    get_utc_now,
     is_mastered,
     is_newly_introduced,
     update_progress,
@@ -37,7 +36,9 @@ class TestProgressTracking(unittest.TestCase):
         word_data = self.progress["word_000001"]
         self.assertEqual(word_data["attempts"], 1)
         self.assertEqual(word_data["successes"], 0)
-        self.assertEqual(word_data["interval"], 0.0333)  # Failed attempt sets to minimum 2 minutes
+        self.assertEqual(
+            word_data["interval"], 0.0333
+        )  # Failed attempt sets to minimum 2 minutes
         self.assertTrue(word_data["last_attempt_was_failure"])
         self.assertTrue(isinstance(word_data["attempt_history"], list))
         self.assertEqual(len(word_data["attempt_history"]), 1)
@@ -111,7 +112,11 @@ class TestProgressTracking(unittest.TestCase):
             {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
             for i in range(1, 6)
         ]
-        word_data = {"attempts": 5, "successes": 5, "attempt_history": recent_success_history}
+        word_data = {
+            "attempts": 5,
+            "successes": 5,
+            "attempt_history": recent_success_history,
+        }
         self.assertTrue(is_mastered(word_data))
 
         # Case 2: Word with old successes but recent failures
@@ -121,7 +126,10 @@ class TestProgressTracking(unittest.TestCase):
             {"timestamp": (now - timedelta(hours=2)).isoformat(), "success": False},
             # Old successes
             *[
-                {"timestamp": (now - timedelta(days=30 + i)).isoformat(), "success": True}
+                {
+                    "timestamp": (now - timedelta(days=30 + i)).isoformat(),
+                    "success": True,
+                }
                 for i in range(5)
             ],
         ]
@@ -135,15 +143,25 @@ class TestProgressTracking(unittest.TestCase):
                 for i in range(1, 3)
             ],
             *[
-                {"timestamp": (now - timedelta(days=7 + i)).isoformat(), "success": True}
+                {
+                    "timestamp": (now - timedelta(days=7 + i)).isoformat(),
+                    "success": True,
+                }
                 for i in range(2)
             ],
             *[
-                {"timestamp": (now - timedelta(days=30 + i)).isoformat(), "success": True}
+                {
+                    "timestamp": (now - timedelta(days=30 + i)).isoformat(),
+                    "success": True,
+                }
                 for i in range(2)
             ],
         ]
-        word_data = {"attempts": 6, "successes": 6, "attempt_history": consistent_history}
+        word_data = {
+            "attempts": 6,
+            "successes": 6,
+            "attempt_history": consistent_history,
+        }
         self.assertTrue(is_mastered(word_data))
 
     def test_interval_progression(self):
@@ -152,11 +170,15 @@ class TestProgressTracking(unittest.TestCase):
 
         # First attempt (success)
         update_progress(word_id, True, self.progress, self.save_callback)
-        self.assertEqual(self.progress[word_id]["interval"], 0.0333)  # First success: 2 minutes
+        self.assertEqual(
+            self.progress[word_id]["interval"], 0.0333
+        )  # First success: 2 minutes
 
         # Second attempt (success)
         update_progress(word_id, True, self.progress, self.save_callback)
-        self.assertEqual(self.progress[word_id]["interval"], 24)  # Second success: 1 day
+        self.assertEqual(
+            self.progress[word_id]["interval"], 24
+        )  # Second success: 1 day
 
         # Third attempt (success) - Now uses hours_since_last * easiness_factor
         # This test is no longer valid with our modified algorithm since we're using elapsed time
@@ -166,7 +188,9 @@ class TestProgressTracking(unittest.TestCase):
         easiness = self.progress[word_id]["easiness_factor"]
 
         # Mock the elapsed time to test the new algorithm
-        with patch("vocabulary_learning.core.progress_tracking.get_utc_now") as mock_get_utc_now:
+        with patch(
+            "vocabulary_learning.core.progress_tracking.get_utc_now"
+        ) as mock_get_utc_now:
             # First get the current time
             current_time = datetime.now(pytz.UTC)
             # Set up the mock to return a time 10 hours later
@@ -177,7 +201,9 @@ class TestProgressTracking(unittest.TestCase):
 
             # With our mocked 10 hour elapsed time, and easiness factor of 2.5 (default)
             # we expect interval to be approximately 10 * 2.5 = 25 hours
-            self.assertAlmostEqual(self.progress[word_id]["interval"], 10 * easiness, delta=0.1)
+            self.assertAlmostEqual(
+                self.progress[word_id]["interval"], 10 * easiness, delta=0.1
+            )
 
     def test_failed_attempt(self):
         """Test interval reduction on failed attempt."""
@@ -188,7 +214,9 @@ class TestProgressTracking(unittest.TestCase):
 
         # Failed attempt
         update_progress(word_id, False, self.progress, self.save_callback)
-        self.assertEqual(self.progress[word_id]["interval"], 0.0333)  # Reset to 2 minutes
+        self.assertEqual(
+            self.progress[word_id]["interval"], 0.0333
+        )  # Reset to 2 minutes
         self.assertTrue(self.progress[word_id]["last_attempt_was_failure"])
 
     def test_calculate_priority_new_word(self):
@@ -231,7 +259,10 @@ class TestProgressTracking(unittest.TestCase):
                 "attempts": 10,
                 "successes": 9,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": True,
+                    }
                     for i in range(1, 10)
                 ],
             },
@@ -239,11 +270,23 @@ class TestProgressTracking(unittest.TestCase):
                 "attempts": 10,
                 "successes": 7,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=1)).isoformat(), "success": False},
-                    {"timestamp": (now - timedelta(hours=2)).isoformat(), "success": False},
-                    {"timestamp": (now - timedelta(hours=3)).isoformat(), "success": False},
+                    {
+                        "timestamp": (now - timedelta(hours=1)).isoformat(),
+                        "success": False,
+                    },
+                    {
+                        "timestamp": (now - timedelta(hours=2)).isoformat(),
+                        "success": False,
+                    },
+                    {
+                        "timestamp": (now - timedelta(hours=3)).isoformat(),
+                        "success": False,
+                    },
                     *[
-                        {"timestamp": (now - timedelta(days=i)).isoformat(), "success": True}
+                        {
+                            "timestamp": (now - timedelta(days=i)).isoformat(),
+                            "success": True,
+                        }
                         for i in range(1, 8)
                     ],
                 ],
@@ -252,7 +295,10 @@ class TestProgressTracking(unittest.TestCase):
                 "attempts": 3,
                 "successes": 2,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i != 1}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": i != 1,
+                    }
                     for i in range(1, 4)
                 ],
             },
@@ -290,7 +336,9 @@ class TestProgressTracking(unittest.TestCase):
         # Second attempt
         update_progress(word_id, True, self.progress, self.save_callback)
         self.assertEqual(len(self.progress[word_id]["review_intervals"]), 2)
-        self.assertAlmostEqual(self.progress[word_id]["review_intervals"][-1], 2, delta=0.1)
+        self.assertAlmostEqual(
+            self.progress[word_id]["review_intervals"][-1], 2, delta=0.1
+        )
 
     def test_easiness_factor_adjustment(self):
         """Test adjustment of easiness factor."""
@@ -323,7 +371,9 @@ class TestProgressTracking(unittest.TestCase):
 
         # Success should increase the factor (but not above initial)
         update_progress("word1", True, self.progress, self.save_callback)
-        self.assertEqual(self.progress["word1"]["easiness_factor"], initial_ef)  # Already at max
+        self.assertEqual(
+            self.progress["word1"]["easiness_factor"], initial_ef
+        )  # Already at max
 
         # Failure should decrease the factor
         update_progress("word1", False, self.progress, self.save_callback)
@@ -335,14 +385,17 @@ class TestProgressTracking(unittest.TestCase):
         mock_time = datetime(2023, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
 
         with patch(
-            "vocabulary_learning.core.progress_tracking.get_utc_now", return_value=mock_time
+            "vocabulary_learning.core.progress_tracking.get_utc_now",
+            return_value=mock_time,
         ):
             # Initialize a new word
             update_progress("new_word", True, self.progress, self.save_callback)
 
             # Check that first_introduced date is set
             self.assertIn("first_introduced", self.progress["new_word"])
-            self.assertEqual(self.progress["new_word"]["first_introduced"], mock_time.isoformat())
+            self.assertEqual(
+                self.progress["new_word"]["first_introduced"], mock_time.isoformat()
+            )
 
             # Check is_newly_introduced returns True for a word with one attempt
             self.assertTrue(is_newly_introduced(self.progress["new_word"]))
@@ -350,7 +403,8 @@ class TestProgressTracking(unittest.TestCase):
             # Update the same word again
             later_time = mock_time + timedelta(days=1)
             with patch(
-                "vocabulary_learning.core.progress_tracking.get_utc_now", return_value=later_time
+                "vocabulary_learning.core.progress_tracking.get_utc_now",
+                return_value=later_time,
             ):
                 update_progress("new_word", True, self.progress, self.save_callback)
 

@@ -1,6 +1,5 @@
 """Progress tracking functionality for vocabulary learning."""
 
-import random
 from datetime import datetime
 from typing import Callable, Dict, Optional
 
@@ -36,7 +35,8 @@ def calculate_next_interval(
         easiness_factor: Current easiness factor
         hours_since_last: Hours elapsed since the word was last seen
 
-    Returns:
+    Returns
+    -------
         Next interval in hours
     """
     if current_interval == 0:
@@ -46,12 +46,16 @@ def calculate_next_interval(
     else:
         # If time since last seen is provided and valid, use it instead of current interval
         if hours_since_last and hours_since_last > 0:
-            return hours_since_last * easiness_factor  # Use actual elapsed time for calculation
+            return (
+                hours_since_last * easiness_factor
+            )  # Use actual elapsed time for calculation
         else:
             return current_interval * easiness_factor  # Fallback to original algorithm
 
 
-def update_progress(word_id: str, success: bool, progress: Dict, save_callback: Callable) -> None:
+def update_progress(
+    word_id: str, success: bool, progress: Dict, save_callback: Callable
+) -> None:
     """Update progress for a word after a practice attempt.
 
     Args:
@@ -92,7 +96,9 @@ def update_progress(word_id: str, success: bool, progress: Dict, save_callback: 
     # Add attempt to history
     if "attempt_history" not in progress[word_id]:
         progress[word_id]["attempt_history"] = []
-    progress[word_id]["attempt_history"].append({"timestamp": now.isoformat(), "success": success})
+    progress[word_id]["attempt_history"].append(
+        {"timestamp": now.isoformat(), "success": success}
+    )
 
     # Update easiness factor and interval
     if success:
@@ -104,12 +110,16 @@ def update_progress(word_id: str, success: bool, progress: Dict, save_callback: 
         # Only increase easiness factor if it's not already at maximum
         if progress[word_id]["easiness_factor"] < INITIAL_EASINESS_FACTOR:
             progress[word_id]["easiness_factor"] = min(
-                progress[word_id]["easiness_factor"] + EASINESS_INCREASE, INITIAL_EASINESS_FACTOR
+                progress[word_id]["easiness_factor"] + EASINESS_INCREASE,
+                INITIAL_EASINESS_FACTOR,
             )
     else:
-        progress[word_id]["interval"] = FIRST_SUCCESS_INTERVAL  # Reset to 2 minutes on failure
+        progress[word_id]["interval"] = (
+            FIRST_SUCCESS_INTERVAL  # Reset to 2 minutes on failure
+        )
         progress[word_id]["easiness_factor"] = max(
-            progress[word_id]["easiness_factor"] - EASINESS_DECREASE, MIN_EASINESS_FACTOR
+            progress[word_id]["easiness_factor"] - EASINESS_DECREASE,
+            MIN_EASINESS_FACTOR,
         )
 
     # Update last seen and failure status
@@ -120,7 +130,9 @@ def update_progress(word_id: str, success: bool, progress: Dict, save_callback: 
     save_callback()
 
 
-def calculate_weighted_success_rate(attempt_history: list, now: Optional[datetime] = None) -> float:
+def calculate_weighted_success_rate(
+    attempt_history: list, now: Optional[datetime] = None
+) -> float:
     """Calculate success rate with temporal decay weighting.
 
     More recent attempts have more weight in the calculation.
@@ -130,7 +142,8 @@ def calculate_weighted_success_rate(attempt_history: list, now: Optional[datetim
         attempt_history: List of attempts with timestamps and success status
         now: Current time (defaults to UTC now if not provided)
 
-    Returns:
+    Returns
+    -------
         Weighted success rate between 0 and 1
     """
     if not attempt_history:
@@ -169,7 +182,8 @@ def calculate_priority(word_data: Optional[Dict], active_words_count: int) -> fl
         word_data: Word's progress data
         active_words_count: Number of active learning words
 
-    Returns:
+    Returns
+    -------
         Priority score (0.0 to 1.0)
     """
     # For new words, check if we have space for more active words
@@ -217,7 +231,8 @@ def is_mastered(word_data: Dict) -> bool:
     Args:
         word_data: Dictionary containing word progress data
 
-    Returns:
+    Returns
+    -------
         True if the word is mastered, False otherwise
     """
     if not word_data:
@@ -241,7 +256,8 @@ def count_active_learning_words(progress_data: Dict) -> int:
     Args:
         progress_data: Progress data dictionary
 
-    Returns:
+    Returns
+    -------
         Number of active words
     """
     return sum(
@@ -259,7 +275,8 @@ def is_newly_introduced(word_data: Dict) -> bool:
     Args:
         word_data: Word progress data
 
-    Returns:
+    Returns
+    -------
         True if the word was just introduced, False otherwise
     """
     if "attempts" not in word_data:

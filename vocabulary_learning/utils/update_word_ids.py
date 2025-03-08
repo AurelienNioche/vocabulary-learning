@@ -6,6 +6,7 @@ from rich.prompt import Confirm
 
 
 def update_word_ids():
+    """Update word IDs in vocabulary.json and optionally sync changes to Firebase."""
     console = Console()
     console.print("\n[bold blue]=== Updating Word IDs ===[/bold blue]")
 
@@ -37,7 +38,9 @@ def update_word_ids():
             if not isinstance(value, dict) or not all(
                 k in value for k in ["hiragana", "kanji", "french", "example_sentence"]
             ):
-                console.print(f"[red]Error: Invalid data structure found for entry {key}[/red]")
+                console.print(
+                    f"[red]Error: Invalid data structure found for entry {key}[/red]"
+                )
                 console.print("[yellow]Restoring from backup...[/yellow]")
                 backup_path.rename(json_path)
                 return
@@ -52,12 +55,16 @@ def update_word_ids():
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(new_vocab_dict, f, ensure_ascii=False, indent=2)
 
-        console.print(f"[green]✓ Successfully updated {len(new_vocab_dict)} word IDs[/green]")
+        console.print(
+            f"[green]✓ Successfully updated {len(new_vocab_dict)} word IDs[/green]"
+        )
         console.print(
             "[dim]A backup of the original file has been saved as vocabulary.json.bak[/dim]"
         )
 
-        if Confirm.ask("[yellow]Would you like to sync these changes to Firebase?[/yellow]"):
+        if Confirm.ask(
+            "[yellow]Would you like to sync these changes to Firebase?[/yellow]"
+        ):
             # Import and run sync_to_firebase
             from sync_to_firebase import sync_to_firebase
 

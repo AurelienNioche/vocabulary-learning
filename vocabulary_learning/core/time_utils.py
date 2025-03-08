@@ -11,7 +11,8 @@ def format_time_interval(hours: float) -> str:
     Args:
         hours: Time interval in hours
 
-    Returns:
+    Returns
+    -------
         Human-readable string representation of the time interval
     """
     if hours == 0:

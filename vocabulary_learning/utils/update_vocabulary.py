@@ -21,7 +21,8 @@ def update_vocabulary_entry(word_id: str, updates: Dict[str, Any]) -> bool:
         updates: Dictionary containing the fields to update and their new values
                 (e.g., {'french': 'new translation'})
 
-    Returns:
+    Returns
+    -------
         bool: True if update was successful, False otherwise
     """
     console = Console()
@@ -33,7 +34,9 @@ def update_vocabulary_entry(word_id: str, updates: Dict[str, Any]) -> bool:
     )
 
     # Get data directory
-    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    data_dir = Path(
+        os.path.expanduser("~/Library/Application Support/VocabularyLearning/data")
+    )
     if not data_dir.exists():
         console.print(f"[red]Data directory not found at {data_dir}[/red]")
         return False
@@ -51,12 +54,16 @@ def update_vocabulary_entry(word_id: str, updates: Dict[str, Any]) -> bool:
 
         # Check if word exists
         if word_id not in vocabulary:
-            console.print(f"[red]Error: Word ID {word_id} not found in vocabulary[/red]")
+            console.print(
+                f"[red]Error: Word ID {word_id} not found in vocabulary[/red]"
+            )
             return False
 
         # Show current entry before update
         console.print("\n[bold]Current word entry:[/bold]")
-        console.print_json(json.dumps(vocabulary[word_id], indent=2, ensure_ascii=False))
+        console.print_json(
+            json.dumps(vocabulary[word_id], indent=2, ensure_ascii=False)
+        )
 
         # Update the word entry
         word_entry = vocabulary[word_id]
@@ -64,7 +71,9 @@ def update_vocabulary_entry(word_id: str, updates: Dict[str, Any]) -> bool:
             if field in word_entry:
                 word_entry[field] = value
             else:
-                console.print(f"[yellow]Warning: Field '{field}' not found in word entry[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Field '{field}' not found in word entry[/yellow]"
+                )
 
         # Save updated vocabulary locally
         with open(vocab_path, "w", encoding="utf-8") as f:
@@ -76,7 +85,11 @@ def update_vocabulary_entry(word_id: str, updates: Dict[str, Any]) -> bool:
         _, vocabulary_ref = initialize_firebase(
             console=console,
             env_file=str(
-                Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/.env"))
+                Path(
+                    os.path.expanduser(
+                        "~/Library/Application Support/VocabularyLearning/.env"
+                    )
+                )
             ),
         )
 
@@ -85,12 +98,16 @@ def update_vocabulary_entry(word_id: str, updates: Dict[str, Any]) -> bool:
             vocabulary_ref.set(vocabulary)
             console.print("[green] ✓[/green]")
         else:
-            console.print("[yellow]Warning: Could not initialize Firebase connection[/yellow]")
+            console.print(
+                "[yellow]Warning: Could not initialize Firebase connection[/yellow]"
+            )
             console.print("[yellow]Changes saved locally only[/yellow]")
 
         # Show updated entry
         console.print("\n[bold]Updated word entry:[/bold]")
-        console.print_json(json.dumps(vocabulary[word_id], indent=2, ensure_ascii=False))
+        console.print_json(
+            json.dumps(vocabulary[word_id], indent=2, ensure_ascii=False)
+        )
         return True
 
     except Exception as e:

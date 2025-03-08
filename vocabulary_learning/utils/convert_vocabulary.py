@@ -52,7 +52,9 @@ def convert_vocabulary():
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(vocab_dict, f, ensure_ascii=False, indent=2)
 
-        console.print(f"[green]✓ Successfully converted {len(vocab_array)} words[/green]")
+        console.print(
+            f"[green]✓ Successfully converted {len(vocab_array)} words[/green]"
+        )
         console.print(f"[dim]Saved to: {output_path}[/dim]")
 
     except Exception as e:

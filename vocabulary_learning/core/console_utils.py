@@ -9,7 +9,9 @@ def show_answer_feedback(console: Console, answer: str, is_correct: bool, messag
     """Show feedback for an answer with consistent formatting."""
     print("\033[A", end="")  # Move cursor up one line
     print("\033[2K", end="")  # Clear the line
-    status = "[bold green]✓ Correct!" if is_correct else "[bold red]✗ Incorrect[/bold red]"
+    status = (
+        "[bold green]✓ Correct!" if is_correct else "[bold red]✗ Incorrect[/bold red]"
+    )
     console.print(f"Your answer: {answer}    {status}")
     if message:
         console.print(message)

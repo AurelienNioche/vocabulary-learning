@@ -27,7 +27,9 @@ def fix_progress():
     )
 
     # Get data directory
-    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    data_dir = Path(
+        os.path.expanduser("~/Library/Application Support/VocabularyLearning/data")
+    )
     if not data_dir.exists():
         console.print(f"[red]Data directory not found at {data_dir}[/red]")
         return
@@ -97,7 +99,9 @@ def fix_progress():
                 console=console,
                 env_file=str(
                     Path(
-                        os.path.expanduser("~/Library/Application Support/VocabularyLearning/.env")
+                        os.path.expanduser(
+                            "~/Library/Application Support/VocabularyLearning/.env"
+                        )
                     )
                 ),
             )
@@ -107,7 +111,9 @@ def fix_progress():
                 progress_ref.set(fixed_progress)
                 console.print("[green] ✓[/green]")
             else:
-                console.print("[yellow]Could not initialize Firebase connection[/yellow]")
+                console.print(
+                    "[yellow]Could not initialize Firebase connection[/yellow]"
+                )
                 console.print("[yellow]Changes saved locally only[/yellow]")
 
         except Exception as e:

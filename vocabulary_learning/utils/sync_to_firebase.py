@@ -27,7 +27,9 @@ def sync_to_firebase():
     )
 
     # Get data directory
-    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    data_dir = Path(
+        os.path.expanduser("~/Library/Application Support/VocabularyLearning/data")
+    )
     if not data_dir.exists():
         console.print(f"[red]Data directory not found at {data_dir}[/red]")
         return
@@ -55,7 +57,11 @@ def sync_to_firebase():
         progress_ref, vocabulary_ref = initialize_firebase(
             console=console,
             env_file=str(
-                Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/.env"))
+                Path(
+                    os.path.expanduser(
+                        "~/Library/Application Support/VocabularyLearning/.env"
+                    )
+                )
             ),
         )
 

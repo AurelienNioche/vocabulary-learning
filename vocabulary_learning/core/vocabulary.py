@@ -15,7 +15,8 @@ def format_word_entry(
         translations: List of French translations
         example_sentences: List of (Japanese, French) example sentence pairs
 
-    Returns:
+    Returns
+    -------
         Formatted word entry dictionary
     """
     return {
@@ -30,7 +31,8 @@ def validate_word_entry(entry: Dict) -> bool:
     Args:
         entry: Word entry dictionary to validate
 
-    Returns:
+    Returns
+    -------
         True if entry is valid
     """
     # Check required fields

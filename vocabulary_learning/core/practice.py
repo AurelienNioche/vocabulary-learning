@@ -1,7 +1,6 @@
 """Practice mode functionality for vocabulary learning."""
 
 import os
-import random
 from datetime import datetime
 from typing import Dict
 
@@ -21,12 +20,10 @@ from vocabulary_learning.core.constants import (
     INITIAL_EASINESS_FACTOR,
     MASTERY_MIN_SUCCESSES,
     MASTERY_SUCCESS_RATE,
-    MAX_ACTIVE_WORDS,
     REQUIRED_PROGRESS_FIELDS,
     REQUIRED_VOCABULARY_COLUMNS,
     VIM_COMMANDS,
     WORD_ID_DIGITS,
-    WORD_ID_PREFIX,
 )
 from vocabulary_learning.core.progress_helpers import update_progress_if_first_attempt
 from vocabulary_learning.core.progress_tracking import (
@@ -44,7 +41,9 @@ from vocabulary_learning.core.text_processing import (
 
 # Load timezone from .env
 load_dotenv()
-TIMEZONE = os.getenv("TIMEZONE", DEFAULT_TIMEZONE)  # Default to DEFAULT_TIMEZONE if not set
+TIMEZONE = os.getenv(
+    "TIMEZONE", DEFAULT_TIMEZONE
+)  # Default to DEFAULT_TIMEZONE if not set
 try:
     tz = pytz.timezone(TIMEZONE)
 except pytz.exceptions.UnknownTimeZoneError:
@@ -81,7 +80,10 @@ def practice_mode(
         successes = word_data.get("successes", 0)
         if attempts > 0:
             success_rate = successes / attempts
-            if success_rate >= MASTERY_SUCCESS_RATE and successes >= MASTERY_MIN_SUCCESSES:
+            if (
+                success_rate >= MASTERY_SUCCESS_RATE
+                and successes >= MASTERY_MIN_SUCCESSES
+            ):
                 mastered_count += 1
             else:
                 active_count += 1
@@ -99,7 +101,9 @@ def practice_mode(
     )
 
     console.print("[dim]Available commands:[/dim]")
-    console.print(" • ".join(f"[blue]{cmd}[/blue] {desc}" for cmd, desc in VIM_COMMANDS.items()))
+    console.print(
+        " • ".join(f"[blue]{cmd}[/blue] {desc}" for cmd, desc in VIM_COMMANDS.items())
+    )
 
     while True:
         # Display elapsed time
@@ -126,7 +130,11 @@ def practice_mode(
         japanese = word_pair["japanese"]
         kanji = word_pair["kanji"] if pd.notna(word_pair["kanji"]) else None
         french = word_pair["french"]
-        example = word_pair["example_sentence"] if pd.notna(word_pair["example_sentence"]) else None
+        example = (
+            word_pair["example_sentence"]
+            if pd.notna(word_pair["example_sentence"])
+            else None
+        )
 
         # Get word ID for progress tracking
         word_index = vocabulary[vocabulary["japanese"] == japanese].index[0]
@@ -143,7 +151,9 @@ def practice_mode(
                     f"\n[bold cyan][Q{question_counter}][/bold cyan] {japanese} [[bold magenta]{kanji}[/bold magenta]]"
                 )
             else:
-                console.print(f"\n[bold cyan][Q{question_counter}][/bold cyan] {japanese}")
+                console.print(
+                    f"\n[bold cyan][Q{question_counter}][/bold cyan] {japanese}"
+                )
 
             # Get user's answer
             while True:
@@ -170,15 +180,26 @@ def practice_mode(
                     elif answer == ":d":
                         print("\033[A", end="")  # Move cursor up one line
                         print("\033[2K", end="")  # Clear the line
-                        console.print(f"Your answer: :d    [bold red]✗ Don't know[/bold red]")
-                        console.print(f"The correct answer is: [green]{french}[/green]\n")
+                        console.print(
+                            "Your answer: :d    [bold red]✗ Don't know[/bold red]"
+                        )
+                        console.print(
+                            f"The correct answer is: [green]{french}[/green]\n"
+                        )
 
-                        # Show updated stats if this is the first attempt
+                        # Update progress only on first attempt
                         if first_attempt:
-                            update_progress_fn(word_id, False)
+                            update_progress_if_first_attempt(
+                                update_progress_fn, word_id, False, first_attempt
+                            )
+                            # Show updated stats if this is the first attempt
                             if word_id in progress:
                                 display_updated_stats(
-                                    progress[word_id], japanese, word_id, active_count, console
+                                    progress[word_id],
+                                    japanese,
+                                    word_id,
+                                    active_count,
+                                    console,
                                 )
 
                         console.print("\n[yellow]Let's try again![/yellow]")
@@ -215,15 +236,20 @@ def practice_mode(
                             progress[word_id], japanese, word_id, active_count, console
                         )
                     else:
-                        update_progress_if_first_attempt(
-                            update_progress_fn, word_id, False, first_attempt
+                        # Display stats without updating progress
+                        display_updated_stats(
+                            progress[word_id], japanese, word_id, active_count, console
                         )
                     first_attempt = False
                     console.print("\n[yellow]Let's try again![/yellow]")
                     break
 
-        question_counter += 1
-        console.print("\n[dim]• ─────────────────────── •[/dim]")  # Add decorative separator
+        # Only increment question counter when moving to a new word
+        if got_it_right:
+            question_counter += 1
+            console.print(
+                "\n[dim]• ─────────────────────── •[/dim]"
+            )  # Add decorative separator
 
 
 def verify_data(vocabulary: pd.DataFrame, progress: Dict) -> None:
@@ -242,10 +268,14 @@ def verify_data(vocabulary: pd.DataFrame, progress: Dict) -> None:
     for word_id, word_data in progress.items():
         for field in REQUIRED_PROGRESS_FIELDS:
             if field not in word_data:
-                raise ValueError(f"Missing required field {field} in progress data for {word_id}")
+                raise ValueError(
+                    f"Missing required field {field} in progress data for {word_id}"
+                )
 
 
-def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> pd.Series:
+def select_word(
+    vocabulary: pd.DataFrame, progress: Dict, console: Console
+) -> pd.Series:
     """Select a word for practice based on priority.
 
     Args:
@@ -253,7 +283,8 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
         progress: Dictionary containing progress data
         console: Rich console for output
 
-    Returns:
+    Returns
+    -------
         Selected word as a pandas Series
     """
     # Verify data integrity
@@ -289,7 +320,9 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
     # If new words have higher priority than existing words, select a new word
     if new_word_priority > max_priority and not new_words.empty:
         selected_word = new_words.iloc[0]
-        console.print(f"\n[dim]Selecting {selected_word['japanese']} [{selected_word.name}][/dim]")
+        console.print(
+            f"\n[dim]Selecting {selected_word['japanese']} [{selected_word.name}][/dim]"
+        )
         console.print(f"[dim]- priority: {new_word_priority:.1f} (new word)[/dim]")
         console.print("[dim]- success rate: 0% (0/0)[/dim]")
         console.print(f"[dim]- easiness factor: {INITIAL_EASINESS_FACTOR}[/dim]")
@@ -339,14 +372,18 @@ def select_word(vocabulary: pd.DataFrame, progress: Dict, console: Console) -> p
         console.print(
             f"[dim]- success rate: {raw_success_rate:.0f}% raw, {weighted_success_rate:.0f}% weighted ({word_data['successes']}/{word_data['attempts']})[/dim]"
         )
-        console.print(f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]")
+        console.print(
+            f"[dim]- easiness factor: {word_data['easiness_factor']:.1f}[/dim]"
+        )
         console.print(
             f"[dim]- optimal interval: {format_time_interval(word_data['interval'])}[/dim]"
         )
         console.print(
             f"[dim]- last attempt was a success: {'No' if word_data['last_attempt_was_failure'] else 'Yes'}[/dim]"
         )
-        console.print(f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]")
+        console.print(
+            f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]"
+        )
         if mastery_status:
             console.print(f"[dim]- mastery status: {', '.join(mastery_status)}[/dim]")
         else:
@@ -411,9 +448,13 @@ def display_word_stats(word_data, console):
     console.print(f"[dim]- attempts: {word_data['attempts']}[/dim]")
     console.print(f"[dim]- successes: {word_data['successes']}[/dim]")
     console.print(f"[dim]- easiness factor: {word_data['easiness_factor']:.2f}[/dim]")
-    console.print(f"[dim]- optimal interval: {format_time_interval(word_data['interval'])}[/dim]")
+    console.print(
+        f"[dim]- optimal interval: {format_time_interval(word_data['interval'])}[/dim]"
+    )
     if "last_seen" in word_data:
-        console.print(f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]")
+        console.print(
+            f"[dim]- last presented: {format_datetime(word_data['last_seen'])}[/dim]"
+        )
     else:
         console.print("[dim]- last presented: never[/dim]")
 
@@ -431,7 +472,9 @@ def display_updated_stats(
         console: Rich console for output
     """
     raw_success_rate = (
-        (word_data["successes"] / word_data["attempts"] * 100) if word_data["attempts"] > 0 else 0
+        (word_data["successes"] / word_data["attempts"] * 100)
+        if word_data["attempts"] > 0
+        else 0
     )
     weighted_success_rate = (
         calculate_weighted_success_rate(word_data.get("attempt_history", [])) * 100
@@ -440,7 +483,9 @@ def display_updated_stats(
     last_attempt_text = (
         "N/A"
         if word_data["attempts"] == 0
-        else "yes" if not word_data["last_attempt_was_failure"] else "no"
+        else "yes"
+        if not word_data["last_attempt_was_failure"]
+        else "no"
     )
     last_seen = format_datetime(word_data["last_seen"])
 
@@ -457,14 +502,22 @@ def display_updated_stats(
 
     # Add mastery status
     successes = word_data.get("successes", 0)
-    weighted_success_rate = calculate_weighted_success_rate(word_data.get("attempt_history", []))
+    weighted_success_rate = calculate_weighted_success_rate(
+        word_data.get("attempt_history", [])
+    )
     mastery_status = []
     if successes < MASTERY_MIN_SUCCESSES:
-        mastery_status.append(f"needs more successful reviews (minimum {MASTERY_MIN_SUCCESSES})")
+        mastery_status.append(
+            f"needs more successful reviews (minimum {MASTERY_MIN_SUCCESSES})"
+        )
     if weighted_success_rate < MASTERY_SUCCESS_RATE:
-        mastery_status.append(f"needs higher success rate (current: {weighted_success_rate:.1%})")
+        mastery_status.append(
+            f"needs higher success rate (current: {weighted_success_rate:.1%})"
+        )
 
     if not mastery_status:  # If no criteria are failing
-        console.print(f"[dim]- mastery status: [green]Mastered![/green][/dim]")
+        console.print("[dim]- mastery status: [green]Mastered![/green][/dim]")
     else:
-        console.print(f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]")
+        console.print(
+            f"[dim]- mastery status: Not mastered - {' and '.join(mastery_status)}[/dim]"
+        )

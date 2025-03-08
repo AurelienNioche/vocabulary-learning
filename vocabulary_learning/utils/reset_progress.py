@@ -11,6 +11,7 @@ from rich.prompt import Confirm
 
 
 def reset_progress():
+    """Reset local progress file and Firebase progress data."""
     console = Console()
     console.print(
         Panel.fit(
@@ -51,7 +52,9 @@ def reset_progress():
             progress_path.rename(backup_path)
             console.print("[green]✓ Created backup of current progress file[/green]")
         except Exception as e:
-            console.print(f"[yellow]Warning: Could not create backup: {str(e)}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not create backup: {str(e)}[/yellow]"
+            )
 
         progress_path.unlink(missing_ok=True)
         console.print("[green]✓ Local progress file deleted[/green]")
@@ -63,7 +66,9 @@ def reset_progress():
 
     # Reset Firebase progress
     if not os.path.exists(cred_path):
-        console.print(f"[yellow]Warning: Firebase credentials not found at {cred_path}[/yellow]")
+        console.print(
+            f"[yellow]Warning: Firebase credentials not found at {cred_path}[/yellow]"
+        )
         console.print(
             "[yellow]Local progress has been reset, but Firebase could not be updated.[/yellow]"
         )
@@ -72,10 +77,10 @@ def reset_progress():
     try:
         # Initialize Firebase
         try:
-            app = firebase_admin.get_app()
+            firebase_admin.get_app()
         except ValueError:
             cred = credentials.Certificate(cred_path)
-            app = firebase_admin.initialize_app(
+            firebase_admin.initialize_app(
                 cred, {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")}
             )
 

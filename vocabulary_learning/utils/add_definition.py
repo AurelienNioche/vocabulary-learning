@@ -7,7 +7,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from rich.console import Console
-from rich.panel import Panel
 
 from vocabulary_learning.core.firebase_config import initialize_firebase
 
@@ -19,7 +18,8 @@ def merge_translations(local_trans: str, firebase_trans: str) -> str:
         local_trans: Local translations string (slash-separated)
         firebase_trans: Firebase translations string (slash-separated)
 
-    Returns:
+    Returns
+    -------
         Merged translations string
     """
     # Split and combine translations
@@ -39,7 +39,9 @@ def add_definition(word_id: str, definition: str) -> bool:
     console = Console()
 
     # Get data directory
-    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    data_dir = Path(
+        os.path.expanduser("~/Library/Application Support/VocabularyLearning/data")
+    )
     vocab_path = data_dir / "vocabulary.json"
 
     try:
@@ -48,7 +50,11 @@ def add_definition(word_id: str, definition: str) -> bool:
         _, vocabulary_ref = initialize_firebase(
             console=console,
             env_file=str(
-                Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/.env"))
+                Path(
+                    os.path.expanduser(
+                        "~/Library/Application Support/VocabularyLearning/.env"
+                    )
+                )
             ),
         )
 
@@ -65,7 +71,9 @@ def add_definition(word_id: str, definition: str) -> bool:
 
         # Check if word exists in either local or Firebase
         if word_id not in local_vocabulary and word_id not in firebase_vocabulary:
-            console.print(f"[red]Error: Word ID {word_id} not found in local or Firebase[/red]")
+            console.print(
+                f"[red]Error: Word ID {word_id} not found in local or Firebase[/red]"
+            )
             return False
 
         # Show current entries if they differ
@@ -73,36 +81,50 @@ def add_definition(word_id: str, definition: str) -> bool:
         firebase_word = firebase_vocabulary.get(word_id, {})
 
         if local_word != firebase_word:
-            console.print("\n[yellow]Warning: Local and Firebase entries differ[/yellow]")
+            console.print(
+                "\n[yellow]Warning: Local and Firebase entries differ[/yellow]"
+            )
             if local_word:
                 console.print("\n[bold]Local entry:[/bold]")
                 console.print_json(json.dumps(local_word, indent=2, ensure_ascii=False))
             if firebase_word:
                 console.print("\n[bold]Firebase entry:[/bold]")
-                console.print_json(json.dumps(firebase_word, indent=2, ensure_ascii=False))
+                console.print_json(
+                    json.dumps(firebase_word, indent=2, ensure_ascii=False)
+                )
 
         # Check if definition exists in Firebase before merging
         firebase_translations = firebase_word.get("french", "").split("/")
         if definition in firebase_translations:
-            console.print(f"[yellow]Definition '{definition}' already exists in Firebase[/yellow]")
+            console.print(
+                f"[yellow]Definition '{definition}' already exists in Firebase[/yellow]"
+            )
             return False
 
         # Check if definition exists in local before merging
         local_translations = local_word.get("french", "").split("/")
         if definition in local_translations:
-            console.print(f"[yellow]Definition '{definition}' already exists locally[/yellow]")
+            console.print(
+                f"[yellow]Definition '{definition}' already exists locally[/yellow]"
+            )
             # Update Firebase with local version if it differs
             if local_word != firebase_word:
                 vocabulary_ref.set(local_vocabulary)
-                console.print("[green]✓ Updated Firebase to match local version[/green]")
+                console.print(
+                    "[green]✓ Updated Firebase to match local version[/green]"
+                )
             return False
 
         # Merge entries if they exist in both places
         if local_word and firebase_word:
             # Use the most complete entry as base
-            word = firebase_word if len(firebase_word) >= len(local_word) else local_word
+            word = (
+                firebase_word if len(firebase_word) >= len(local_word) else local_word
+            )
             # Add the new definition
-            translations = word.get("french", "").split("/") if word.get("french") else []
+            translations = (
+                word.get("french", "").split("/") if word.get("french") else []
+            )
             translations.append(definition)
             translations = sorted(t.strip() for t in translations if t.strip())
             word["french"] = "/".join(translations)
@@ -110,7 +132,9 @@ def add_definition(word_id: str, definition: str) -> bool:
             # Use whichever entry exists
             word = local_word or firebase_word
             # Add the new definition
-            translations = word.get("french", "").split("/") if word.get("french") else []
+            translations = (
+                word.get("french", "").split("/") if word.get("french") else []
+            )
             translations.append(definition)
             translations = sorted(t.strip() for t in translations if t.strip())
             word["french"] = "/".join(translations)
@@ -136,8 +160,12 @@ def add_definition(word_id: str, definition: str) -> bool:
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: python -m vocabulary_learning.utils.add_definition WORD_ID DEFINITION")
-        print("Example: python -m vocabulary_learning.utils.add_definition 000037 'avoir un lien'")
+        print(
+            "Usage: python -m vocabulary_learning.utils.add_definition WORD_ID DEFINITION"
+        )
+        print(
+            "Example: python -m vocabulary_learning.utils.add_definition 000037 'avoir un lien'"
+        )
         sys.exit(1)
 
     word_id = sys.argv[1]

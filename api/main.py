@@ -42,7 +42,9 @@ try:
     firebase_admin.get_app()
 except ValueError:
     cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred, {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")})
+    firebase_admin.initialize_app(
+        cred, {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")}
+    )
 
 # Get user credentials
 email = os.getenv("FIREBASE_USER_EMAIL")

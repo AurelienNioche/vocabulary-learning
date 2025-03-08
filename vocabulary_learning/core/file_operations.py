@@ -20,7 +20,7 @@ def load_vocabulary(vocab_file, vocab_ref, console):
                 if isinstance(vocab_data, list):
                     # Convert old list format to dictionary
                     vocab_data = {
-                        f"word_{str(i+1).zfill(6)}": {
+                        f"word_{str(i + 1).zfill(6)}": {
                             "hiragana": word.get("japanese", word.get("hiragana", "")),
                             "kanji": word.get("kanji", ""),
                             "french": word.get("french", ""),
@@ -41,10 +41,14 @@ def load_vocabulary(vocab_file, vocab_ref, console):
                     ]
                 )
                 # Clean whitespace from entries
-                vocabulary = vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+                vocabulary = vocabulary.apply(
+                    lambda x: x.str.strip() if x.dtype == "object" else x
+                )
                 # Remove any empty rows
                 vocabulary = vocabulary.dropna(subset=["japanese", "french"])
-                console.print(f"[green]✓ Loaded {len(vocabulary)} words from Firebase[/green]")
+                console.print(
+                    f"[green]✓ Loaded {len(vocabulary)} words from Firebase[/green]"
+                )
                 return vocabulary
             else:
                 console.print("[yellow]No vocabulary data found in Firebase[/yellow]")
@@ -69,7 +73,7 @@ def load_vocabulary(vocab_file, vocab_ref, console):
         if isinstance(vocab_data, list):
             # Convert old list format to dictionary
             vocab_data = {
-                f"word_{str(i+1).zfill(6)}": {
+                f"word_{str(i + 1).zfill(6)}": {
                     "hiragana": word.get("japanese", word.get("hiragana", "")),
                     "kanji": word.get("kanji", ""),
                     "french": word.get("french", ""),
@@ -91,10 +95,14 @@ def load_vocabulary(vocab_file, vocab_ref, console):
             ]
         )
         # Clean whitespace from entries
-        vocabulary = vocabulary.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+        vocabulary = vocabulary.apply(
+            lambda x: x.str.strip() if x.dtype == "object" else x
+        )
         # Remove any empty rows
         vocabulary = vocabulary.dropna(subset=["japanese", "french"])
-        console.print(f"[green]✓ Loaded {len(vocabulary)} words from local file[/green]")
+        console.print(
+            f"[green]✓ Loaded {len(vocabulary)} words from local file[/green]"
+        )
 
         # Show last progress update time if progress file exists
         progress_file = str(Path(vocab_file).parent / "progress.json")
@@ -115,13 +123,19 @@ def load_vocabulary(vocab_file, vocab_ref, console):
 
     except FileNotFoundError:
         console.print("[yellow]No vocabulary file found[/yellow]")
-        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence", "word_id"])
+        return pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence", "word_id"]
+        )
     except json.JSONDecodeError:
         console.print("[red]Error: Invalid JSON format in vocabulary file[/red]")
-        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence", "word_id"])
+        return pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence", "word_id"]
+        )
     except Exception as e:
         console.print(f"[red]Error loading vocabulary: {str(e)}[/red]")
-        return pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence", "word_id"])
+        return pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence", "word_id"]
+        )
 
 
 def load_progress(progress_file, progress_ref, console):
@@ -149,7 +163,9 @@ def load_progress(progress_file, progress_ref, console):
             with open(progress_file, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 if not content:  # Handle empty file
-                    console.print("[yellow]Empty progress file, starting fresh[/yellow]")
+                    console.print(
+                        "[yellow]Empty progress file, starting fresh[/yellow]"
+                    )
                     return {}
                 progress = json.loads(content)
                 # Migrate old progress data to new format
@@ -197,7 +213,7 @@ def save_vocabulary(vocabulary, vocab_file, vocab_ref, console):
     # Convert DataFrame to dictionary format
     vocab_dict = {}
     for i, row in vocabulary.iterrows():
-        word_id = f"word_{str(i+1).zfill(6)}"
+        word_id = f"word_{str(i + 1).zfill(6)}"
         vocab_dict[word_id] = {
             "hiragana": row["japanese"],
             "kanji": row["kanji"] if pd.notna(row["kanji"]) else "",

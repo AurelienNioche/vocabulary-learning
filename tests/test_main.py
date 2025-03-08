@@ -6,8 +6,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from rich.console import Console
-
 from vocabulary_learning.core.file_operations import load_vocabulary
 from vocabulary_learning.main import VocabularyLearner
 
@@ -53,7 +51,9 @@ class TestVocabularyLearner(unittest.TestCase):
 
     @patch("vocabulary_learning.main.initialize_firebase")
     @patch("vocabulary_learning.main.get_data_dir")
-    def test_learner_initialization_success(self, mock_get_data_dir, mock_init_firebase):
+    def test_learner_initialization_success(
+        self, mock_get_data_dir, mock_init_firebase
+    ):
         """Test successful VocabularyLearner initialization."""
         # Mock get_data_dir to return our temp directory
         mock_get_data_dir.return_value = self.temp_dir
@@ -82,7 +82,9 @@ class TestVocabularyLearner(unittest.TestCase):
         mock_get_data_dir.return_value = self.temp_dir
 
         # Initialize learner with mock Firebase
-        with patch("vocabulary_learning.main.initialize_firebase") as mock_init_firebase:
+        with patch(
+            "vocabulary_learning.main.initialize_firebase"
+        ) as mock_init_firebase:
             mock_progress_ref = MagicMock()
             mock_vocab_ref = MagicMock()
             mock_init_firebase.return_value = (mock_progress_ref, mock_vocab_ref)

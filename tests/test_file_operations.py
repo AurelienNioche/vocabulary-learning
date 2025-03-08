@@ -10,7 +10,11 @@ from unittest.mock import MagicMock
 import pandas as pd
 from rich.console import Console
 
-from vocabulary_learning.core.file_operations import load_progress, load_vocabulary, save_progress
+from vocabulary_learning.core.file_operations import (
+    load_progress,
+    load_vocabulary,
+    save_progress,
+)
 
 
 class TestFileOperations(unittest.TestCase):
@@ -126,7 +130,9 @@ class TestFileOperations(unittest.TestCase):
 
     def test_save_progress_firebase(self):
         """Test saving progress to Firebase."""
-        save_progress(self.progress_data, self.progress_file, self.mock_ref, self.console)
+        save_progress(
+            self.progress_data, self.progress_file, self.mock_ref, self.console
+        )
         self.mock_ref.set.assert_called_once_with(self.progress_data)
 
     def test_save_progress_firebase_failure(self):
@@ -134,7 +140,9 @@ class TestFileOperations(unittest.TestCase):
         self.mock_ref.set.side_effect = Exception("Firebase error")
 
         # Should still save locally even if Firebase fails
-        save_progress(self.progress_data, self.progress_file, self.mock_ref, self.console)
+        save_progress(
+            self.progress_data, self.progress_file, self.mock_ref, self.console
+        )
 
         with open(self.progress_file, "r", encoding="utf-8") as f:
             saved_data = json.load(f)

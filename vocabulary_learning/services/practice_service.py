@@ -29,13 +29,16 @@ class PracticeService:
         self.progress_service = progress_service
         self.console = console or Console()
 
-    def select_practice_words(self, num_words: int = DEFAULT_PRACTICE_WORDS) -> List[str]:
+    def select_practice_words(
+        self, num_words: int = DEFAULT_PRACTICE_WORDS
+    ) -> List[str]:
         """Select words for practice based on priority.
 
         Args:
             num_words: Number of words to select (defaults to DEFAULT_PRACTICE_WORDS)
 
-        Returns:
+        Returns
+        -------
             List of selected words
         """
         all_words = self.vocabulary_service.get_all_words()
@@ -69,7 +72,9 @@ class PracticeService:
             total_weight = sum(weights)
             if total_weight > 0:
                 weights = [w / total_weight for w in weights]
-                num_remaining = min(num_words - len(selected_words), len(remaining_words))
+                num_remaining = min(
+                    num_words - len(selected_words), len(remaining_words)
+                )
                 selected_remaining = random.choices(
                     [word[0] for word in remaining_words],
                     weights=weights,
@@ -87,7 +92,8 @@ class PracticeService:
         Args:
             word_id: The word ID (e.g., 'word_000001')
 
-        Returns:
+        Returns
+        -------
             Dictionary with word details and progress
         """
         vocab_entry = self.vocabulary_service.get_word(word_id)
@@ -122,7 +128,8 @@ class PracticeService:
     def get_practice_stats(self) -> Dict:
         """Get overall practice statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with practice statistics
         """
         all_words = self.vocabulary_service.get_all_words()
@@ -160,7 +167,9 @@ class PracticeService:
             "words_mastered": words_mastered,
             "total_attempts": total_attempts,
             "total_successes": total_successes,
-            "success_rate": (total_successes / total_attempts) if total_attempts > 0 else 0.0,
+            "success_rate": (total_successes / total_attempts)
+            if total_attempts > 0
+            else 0.0,
         }
 
     def get_word_suggestions(
@@ -172,7 +181,8 @@ class PracticeService:
             current_word: Current word being practiced
             num_suggestions: Number of suggestions to return
 
-        Returns:
+        Returns
+        -------
             List of (word, similarity_score) tuples
         """
         all_words = self.vocabulary_service.get_all_words()
@@ -199,7 +209,8 @@ class PracticeService:
             for trans1 in current_entry["translations"]:
                 for trans2 in entry["translations"]:
                     if any(
-                        word in trans1.lower() and word in trans2.lower() for word in trans1.split()
+                        word in trans1.lower() and word in trans2.lower()
+                        for word in trans1.split()
                     ):
                         score += 0.5
 

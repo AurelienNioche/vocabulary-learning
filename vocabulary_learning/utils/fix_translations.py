@@ -13,7 +13,9 @@ console = Console()
 def fix_translations():
     """Fix noun translations in vocabulary (e.g., 'échanger' -> 'échange')."""
     # Get data directory
-    data_dir = Path(os.path.expanduser("~/Library/Application Support/VocabularyLearning/data"))
+    data_dir = Path(
+        os.path.expanduser("~/Library/Application Support/VocabularyLearning/data")
+    )
     if not data_dir.exists():
         console.print(f"[red]Data directory not found at {data_dir}[/red]")
         return
@@ -64,7 +66,9 @@ def fix_translations():
                 if Confirm.ask(
                     "[yellow]Would you like to sync these changes to Firebase?[/yellow]"
                 ):
-                    from vocabulary_learning.utils.sync_to_firebase import sync_to_firebase
+                    from vocabulary_learning.utils.sync_to_firebase import (
+                        sync_to_firebase,
+                    )
 
                     sync_to_firebase()
             else:

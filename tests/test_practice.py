@@ -9,10 +9,7 @@ import pytz
 from rich.console import Console
 
 from vocabulary_learning.core.constants import (
-    MASTERY_MIN_SUCCESSES,
-    MASTERY_SUCCESS_RATE,
     MAX_ACTIVE_WORDS,
-    WORD_ID_DIGITS,
     WORD_ID_PREFIX,
 )
 from vocabulary_learning.core.practice import check_answer, practice_mode, select_word
@@ -90,7 +87,10 @@ class TestPractice(unittest.TestCase):
                 "interval": 24,
                 "easiness_factor": 2.5,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": True,
+                    }
                     for i in range(1, 10)
                 ],
             }
@@ -164,7 +164,10 @@ class TestPractice(unittest.TestCase):
                 "review_intervals": [1, 4, 24],
                 "easiness_factor": 2.5,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": True,
+                    }
                     for i in range(1, 10)
                 ],
             }
@@ -199,7 +202,9 @@ class TestPractice(unittest.TestCase):
 
     def test_word_mastery_criteria(self):
         """Test the criteria for considering a word mastered."""
-        from vocabulary_learning.core.progress_tracking import count_active_learning_words
+        from vocabulary_learning.core.progress_tracking import (
+            count_active_learning_words,
+        )
 
         now = datetime.now(pytz.UTC)
         progress = {
@@ -210,7 +215,10 @@ class TestPractice(unittest.TestCase):
                 "last_seen": "2024-02-11T12:00:00",
                 "interval": 0.0333,  # 2 minutes
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": True,
+                    }
                     for i in range(1, 5)
                 ],
             },
@@ -221,7 +229,10 @@ class TestPractice(unittest.TestCase):
                 "last_seen": "2024-02-11T12:00:00",
                 "interval": 24,  # 1 day
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i > 2}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": i > 2,
+                    }
                     for i in range(1, 11)
                 ],
             },
@@ -232,7 +243,10 @@ class TestPractice(unittest.TestCase):
                 "last_seen": "2024-02-11T12:00:00",
                 "interval": 48,  # 2 days
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": True,
+                    }
                     for i in range(1, 10)
                 ],
             },
@@ -243,7 +257,10 @@ class TestPractice(unittest.TestCase):
                 "last_seen": "2024-02-11T12:00:00",
                 "interval": 96,  # 4 days
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": True}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": True,
+                    }
                     for i in range(1, 15)
                 ],
             },
@@ -251,7 +268,9 @@ class TestPractice(unittest.TestCase):
 
         # Count active words (should be 2 - word_1 and word_2)
         active_count = count_active_learning_words(progress)
-        self.assertEqual(active_count, 2, "Only non-mastered words should be counted as active")
+        self.assertEqual(
+            active_count, 2, "Only non-mastered words should be counted as active"
+        )
 
     @patch("vocabulary_learning.core.practice.exit_with_save", side_effect=SystemExit)
     @patch("builtins.input", side_effect=[":h", ":s", ":q"])
@@ -327,7 +346,9 @@ class TestPractice(unittest.TestCase):
         # Verify progress was updated for the failure
         self.mock_update_progress.assert_called()
         first_call_args = self.mock_update_progress.call_args_list[0][0]
-        self.assertEqual(first_call_args[1], False)  # Second argument should be success=False
+        self.assertEqual(
+            first_call_args[1], False
+        )  # Second argument should be success=False
         mock_exit.assert_called_once()
 
     def test_introduce_new_word_when_below_max_active(self):
@@ -344,7 +365,10 @@ class TestPractice(unittest.TestCase):
                 "review_intervals": [1, 4, 24],
                 "easiness_factor": 2.5,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i != 1}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": i != 1,
+                    }
                     for i in range(1, 4)
                 ],
             },
@@ -353,11 +377,16 @@ class TestPractice(unittest.TestCase):
                 "successes": 1,
                 "interval": 1,
                 "last_attempt_was_failure": False,  # Not failed
-                "last_seen": (now - timedelta(minutes=30)).isoformat(),  # Seen very recently
+                "last_seen": (
+                    now - timedelta(minutes=30)
+                ).isoformat(),  # Seen very recently
                 "review_intervals": [1],
                 "easiness_factor": 2.5,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i != 1}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": i != 1,
+                    }
                     for i in range(1, 3)
                 ],
             },
@@ -383,7 +412,10 @@ class TestPractice(unittest.TestCase):
                 "review_intervals": [1],
                 "easiness_factor": 2.5,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=i)).isoformat(), "success": i != 2}
+                    {
+                        "timestamp": (now - timedelta(hours=i)).isoformat(),
+                        "success": i != 2,
+                    }
                     for i in range(1, 4)
                 ],
             }
@@ -414,7 +446,10 @@ class TestPractice(unittest.TestCase):
                 "review_intervals": [1, 4, 24],
                 "easiness_factor": 2.5,
                 "attempt_history": [
-                    {"timestamp": (now - timedelta(hours=j)).isoformat(), "success": j != 1}
+                    {
+                        "timestamp": (now - timedelta(hours=j)).isoformat(),
+                        "success": j != 1,
+                    }
                     for j in range(1, 4)
                 ],
             }
@@ -430,6 +465,149 @@ class TestPractice(unittest.TestCase):
 
         # Also verify that the third word (which would be new) was not selected
         self.assertNotEqual(selected_word["japanese"], "ありがとう")
+
+    def test_progress_not_updated_on_retry(self):
+        """Test that progress is not updated when retrying a word in the same review session."""
+        # Create progress data for a word
+        word_id = "000001"
+        initial_progress = {
+            "attempts": 3,
+            "successes": 2,
+            "interval": 24,
+            "last_attempt_was_failure": False,
+            "last_seen": datetime.now(pytz.UTC).isoformat(),
+            "review_intervals": [1, 4, 24],
+            "easiness_factor": 2.5,
+            "attempt_history": [
+                {"timestamp": datetime.now(pytz.UTC).isoformat(), "success": True},
+                {"timestamp": datetime.now(pytz.UTC).isoformat(), "success": False},
+                {"timestamp": datetime.now(pytz.UTC).isoformat(), "success": True},
+            ],
+        }
+
+        # Mock select_word to return a specific word
+        mock_word = pd.Series(
+            {
+                "japanese": "こんにちは",
+                "kanji": "今日は",
+                "french": "bonjour",
+                "example_sentence": "こんにちは、元気ですか？",
+            }
+        )
+        mock_word.name = 0  # This will make the word_id "000001"
+
+        # Mock input to simulate a wrong answer followed by a correct one
+        with (
+            patch("builtins.input", side_effect=["wrong", "bonjour", ":q"]),
+            patch(
+                "vocabulary_learning.core.practice.select_word", return_value=mock_word
+            ),
+        ):
+            # Start practice mode and expect SystemExit
+            with self.assertRaises(SystemExit):
+                practice_mode(
+                    self.vocabulary,
+                    {word_id: initial_progress},
+                    self.console,
+                    self.mock_converter,
+                    self.mock_update_progress,
+                    self.mock_show_help,
+                    self.mock_show_stats,
+                    self.mock_save_progress,
+                )
+
+        # Verify that update_progress was called exactly once (for the first attempt)
+        self.assertEqual(self.mock_update_progress.call_count, 1)
+
+        # Verify that the call was made with the correct arguments
+        self.mock_update_progress.assert_called_once_with(word_id, False)
+
+        # Verify that the progress data was not modified
+        self.assertEqual(initial_progress["attempts"], 3)
+        self.assertEqual(initial_progress["successes"], 2)
+        self.assertEqual(initial_progress["easiness_factor"], 2.5)
+        self.assertEqual(len(initial_progress["attempt_history"]), 3)
+
+    def test_progress_not_updated_on_dont_know_retry(self):
+        """Test that progress is updated once when using :d command but not during retries."""
+        # Create progress data for a word
+        word_id = "000001"
+        progress = {
+            word_id: {
+                "attempts": 3,
+                "successes": 2,
+                "interval": 24,
+                "last_attempt_was_failure": False,
+                "last_seen": datetime.now(pytz.UTC).isoformat(),
+                "review_intervals": [1, 4, 24],
+                "easiness_factor": 2.5,
+                "attempt_history": [
+                    {"timestamp": datetime.now(pytz.UTC).isoformat(), "success": True},
+                    {"timestamp": datetime.now(pytz.UTC).isoformat(), "success": False},
+                    {"timestamp": datetime.now(pytz.UTC).isoformat(), "success": True},
+                ],
+            }
+        }
+
+        # Mock select_word to return a specific word
+        mock_word = pd.Series(
+            {
+                "japanese": "こんにちは",
+                "kanji": "今日は",
+                "french": "bonjour",
+                "example_sentence": "こんにちは、元気ですか？",
+            }
+        )
+        mock_word.name = 0  # This will make the word_id "000001"
+
+        # Create a mock update_progress function that actually updates the progress
+        def mock_update_progress(word_id, success):
+            if word_id in progress:
+                progress[word_id]["attempts"] += 1
+                if not success:
+                    progress[word_id]["easiness_factor"] = max(
+                        progress[word_id]["easiness_factor"] - 0.2, 1.3
+                    )
+                    progress[word_id]["interval"] = 0.0333  # Reset to 2 minutes
+                    progress[word_id]["last_attempt_was_failure"] = True
+                progress[word_id]["last_seen"] = datetime.now(pytz.UTC).isoformat()
+                progress[word_id]["attempt_history"].append(
+                    {
+                        "timestamp": datetime.now(pytz.UTC).isoformat(),
+                        "success": success,
+                    }
+                )
+
+        # Mock input to simulate :d command followed by a correct answer
+        with (
+            patch("builtins.input", side_effect=[":d", "bonjour", ":q"]),
+            patch(
+                "vocabulary_learning.core.practice.select_word", return_value=mock_word
+            ),
+        ):
+            # Start practice mode and expect SystemExit
+            with self.assertRaises(SystemExit):
+                practice_mode(
+                    self.vocabulary,
+                    progress,
+                    self.console,
+                    self.mock_converter,
+                    mock_update_progress,  # Pass our mock function directly
+                    self.mock_show_help,
+                    self.mock_show_stats,
+                    self.mock_save_progress,
+                )
+
+        # Verify that the progress data was updated correctly
+        word_data = progress[word_id]
+        self.assertEqual(word_data["attempts"], 4)  # Should increment
+        self.assertEqual(word_data["successes"], 2)  # Should not change
+        self.assertLess(word_data["easiness_factor"], 2.5)  # Should decrease
+        self.assertEqual(word_data["interval"], 0.0333)  # Should reset to 2 minutes
+        self.assertTrue(word_data["last_attempt_was_failure"])  # Should be True
+        self.assertEqual(
+            len(word_data["attempt_history"]), 4
+        )  # Should add one more attempt
 
 
 if __name__ == "__main__":

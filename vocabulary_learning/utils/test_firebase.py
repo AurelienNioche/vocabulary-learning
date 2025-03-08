@@ -19,17 +19,19 @@ def test_firebase_connection():
     cred_path = os.path.expandvars(os.getenv("FIREBASE_CREDENTIALS_PATH"))
 
     if not os.path.exists(cred_path):
-        console.print(f"[red]Error: Firebase credentials not found at {cred_path}[/red]")
+        console.print(
+            f"[red]Error: Firebase credentials not found at {cred_path}[/red]"
+        )
         return
 
     try:
         # Initialize Firebase
         try:
-            app = firebase_admin.get_app()
+            firebase_admin.get_app()
             console.print("[dim]Using existing Firebase connection[/dim]")
         except ValueError:
             cred = credentials.Certificate(cred_path)
-            app = firebase_admin.initialize_app(
+            firebase_admin.initialize_app(
                 cred, {"databaseURL": os.getenv("FIREBASE_DATABASE_URL")}
             )
 
@@ -78,7 +80,9 @@ def test_firebase_connection():
 
         total_words = len(vocab_data)
         words_started = len(progress_data)
-        words_mastered = sum(1 for data in progress_data.values() if data["successes"] >= 5)
+        words_mastered = sum(
+            1 for data in progress_data.values() if data["successes"] >= 5
+        )
 
         table.add_row("Total Words", str(total_words))
         table.add_row("Words Started", str(words_started))

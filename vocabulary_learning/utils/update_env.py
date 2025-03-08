@@ -1,6 +1,5 @@
 """Script to update .env file with timezone information."""
 
-import os
 from pathlib import Path
 
 from rich.console import Console
@@ -40,7 +39,9 @@ def update_env():
                         continue
 
     # Get timezone from user or use default
-    timezone = Prompt.ask("Enter your timezone", default=DEFAULT_TIMEZONE, show_default=True)
+    timezone = Prompt.ask(
+        "Enter your timezone", default=DEFAULT_TIMEZONE, show_default=True
+    )
 
     # Update timezone in env_content
     env_content["TIMEZONE"] = timezone

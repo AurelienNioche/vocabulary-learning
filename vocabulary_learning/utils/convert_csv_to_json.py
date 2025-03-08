@@ -6,6 +6,7 @@ from rich.console import Console
 
 
 def convert_csv_to_json():
+    """Convert vocabulary CSV to JSON format."""
     console = Console()
     console.print("\n[bold blue]=== Converting CSV to JSON ===[/bold blue]")
 
@@ -24,7 +25,7 @@ def convert_csv_to_json():
 
         # Convert DataFrame to the required JSON format with zero-padded numbers
         vocab_dict = {
-            f"word_{str(i+1).zfill(6)}": {  # Using zfill(6) for 6-digit padding
+            f"word_{str(i + 1).zfill(6)}": {  # Using zfill(6) for 6-digit padding
                 "hiragana": row["japanese"],
                 "kanji": row["kanji"] if pd.notna(row["kanji"]) else "",
                 "french": row["french"],
@@ -44,7 +45,9 @@ def convert_csv_to_json():
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(vocab_dict, f, ensure_ascii=False, indent=2)
 
-        console.print(f"[green]✓ Successfully converted {len(df)} words from CSV to JSON[/green]")
+        console.print(
+            f"[green]✓ Successfully converted {len(df)} words from CSV to JSON[/green]"
+        )
         console.print("[dim]The vocabulary.csv file can now be safely deleted.[/dim]")
 
     except Exception as e:

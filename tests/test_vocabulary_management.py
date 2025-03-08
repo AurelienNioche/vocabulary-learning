@@ -10,7 +10,10 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 from rich.console import Console
 
-from vocabulary_learning.core.vocabulary_management import add_vocabulary, reset_progress
+from vocabulary_learning.core.vocabulary_management import (
+    add_vocabulary,
+    reset_progress,
+)
 
 
 class TestVocabularyManagement(unittest.TestCase):
@@ -22,7 +25,9 @@ class TestVocabularyManagement(unittest.TestCase):
         self.progress_file = os.path.join(self.temp_dir, "progress.json")
 
         # Create empty vocabulary DataFrame
-        self.vocabulary = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        self.vocabulary = pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence"]
+        )
 
         # Sample progress data
         self.progress = {
@@ -67,7 +72,9 @@ class TestVocabularyManagement(unittest.TestCase):
         ]
 
         # Create a mock vocabulary DataFrame
-        mock_vocab_df = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        mock_vocab_df = pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence"]
+        )
         mock_load_vocab = MagicMock(return_value=mock_vocab_df)
 
         with patch("rich.prompt.Confirm.ask", return_value=False):
@@ -93,7 +100,9 @@ class TestVocabularyManagement(unittest.TestCase):
         self.assertEqual(vocab_data[word_id]["hiragana"], "ひらがな")
         self.assertEqual(vocab_data[word_id]["kanji"], "新しい")
         self.assertEqual(vocab_data[word_id]["french"], "nouveau")
-        self.assertEqual(vocab_data[word_id]["example_sentence"], "新しい車を買いました。")
+        self.assertEqual(
+            vocab_data[word_id]["example_sentence"], "新しい車を買いました。"
+        )
 
         # Verify Firebase sync
         self.mock_ref.set.assert_called_once_with(vocab_data)
@@ -220,7 +229,9 @@ class TestVocabularyManagement(unittest.TestCase):
         # Mock save callback
         mock_save = MagicMock()
 
-        reset_progress(self.progress_file, self.mock_ref, self.progress, mock_save, self.console)
+        reset_progress(
+            self.progress_file, self.mock_ref, self.progress, mock_save, self.console
+        )
 
         # Verify progress was cleared
         self.assertEqual(len(self.progress), 0)
@@ -248,7 +259,9 @@ class TestVocabularyManagement(unittest.TestCase):
         # Mock save callback
         mock_save = MagicMock()
 
-        reset_progress(self.progress_file, self.mock_ref, self.progress, mock_save, self.console)
+        reset_progress(
+            self.progress_file, self.mock_ref, self.progress, mock_save, self.console
+        )
 
         # Verify progress was not cleared
         self.assertEqual(len(self.progress), 1)
@@ -280,7 +293,9 @@ class TestVocabularyManagement(unittest.TestCase):
         mock_ref = MagicMock()
         mock_ref.set.side_effect = Exception("Firebase reset failed")
 
-        reset_progress(self.progress_file, mock_ref, self.progress, mock_save, self.console)
+        reset_progress(
+            self.progress_file, mock_ref, self.progress, mock_save, self.console
+        )
 
         # Verify progress was still cleared locally
         self.assertEqual(len(self.progress), 0)
@@ -337,8 +352,12 @@ class TestVocabularyManagement(unittest.TestCase):
         # Verify both words are present in dictionary format
         self.assertEqual(len(vocab_data), 2)
         self.assertTrue(isinstance(vocab_data, dict))
-        self.assertTrue(any(word["hiragana"] == "こんにちは" for word in vocab_data.values()))
-        self.assertTrue(any(word["hiragana"] == "さっき" for word in vocab_data.values()))
+        self.assertTrue(
+            any(word["hiragana"] == "こんにちは" for word in vocab_data.values())
+        )
+        self.assertTrue(
+            any(word["hiragana"] == "さっき" for word in vocab_data.values())
+        )
 
     @patch("builtins.input")
     def test_add_vocabulary_with_invalid_format(self, mock_input):
@@ -392,7 +411,9 @@ class TestVocabularyManagement(unittest.TestCase):
         ]
 
         # Create empty vocabulary DataFrame
-        empty_vocabulary = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        empty_vocabulary = pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence"]
+        )
 
         # Mock load_vocabulary function
         mock_load_vocab = MagicMock()
@@ -554,7 +575,9 @@ class TestVocabularyManagement(unittest.TestCase):
         ]
 
         # Create mock vocabulary DataFrames for each state
-        initial_vocab_df = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        initial_vocab_df = pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence"]
+        )
         first_word_df = pd.DataFrame(
             [
                 {
@@ -588,8 +611,12 @@ class TestVocabularyManagement(unittest.TestCase):
 
         # Verify both words were added
         self.assertEqual(len(vocab_data), 2)
-        self.assertTrue(any(word["hiragana"] == "あたらしい" for word in vocab_data.values()))
-        self.assertTrue(any(word["hiragana"] == "こんにちは" for word in vocab_data.values()))
+        self.assertTrue(
+            any(word["hiragana"] == "あたらしい" for word in vocab_data.values())
+        )
+        self.assertTrue(
+            any(word["hiragana"] == "こんにちは" for word in vocab_data.values())
+        )
 
         # Verify load_vocabulary was called twice (once after each word)
         self.assertEqual(mock_load_vocab.call_count, 2)
@@ -647,7 +674,9 @@ class TestVocabularyManagement(unittest.TestCase):
         ]
 
         # Create a mock vocabulary DataFrame
-        mock_vocab_df = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        mock_vocab_df = pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence"]
+        )
         mock_load_vocab = MagicMock(side_effect=Exception("Load error"))
 
         with patch("rich.prompt.Confirm.ask", return_value=False):
@@ -687,7 +716,9 @@ class TestVocabularyManagement(unittest.TestCase):
         ]
 
         # Create a mock vocabulary DataFrame
-        mock_vocab_df = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        mock_vocab_df = pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence"]
+        )
         mock_load_vocab = MagicMock(return_value=mock_vocab_df)
 
         # Mock JapaneseTextConverter
@@ -739,7 +770,9 @@ class TestVocabularyManagement(unittest.TestCase):
         ]
 
         # Create a mock vocabulary DataFrame
-        mock_vocab_df = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        mock_vocab_df = pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence"]
+        )
         mock_load_vocab = MagicMock(return_value=mock_vocab_df)
 
         # Mock converter that raises an exception
@@ -766,7 +799,9 @@ class TestVocabularyManagement(unittest.TestCase):
         # Verify word was added with original input
         self.assertEqual(len(vocab_data), 1)
         word_id = list(vocab_data.keys())[0]
-        self.assertEqual(vocab_data[word_id]["hiragana"], "にほんてき")  # Original input preserved
+        self.assertEqual(
+            vocab_data[word_id]["hiragana"], "にほんてき"
+        )  # Original input preserved
         self.assertEqual(vocab_data[word_id]["kanji"], "日本的")
         self.assertEqual(vocab_data[word_id]["french"], "style japonais")
 
@@ -789,7 +824,9 @@ class TestVocabularyManagement(unittest.TestCase):
         ]
 
         # Create a mock vocabulary DataFrame
-        mock_vocab_df = pd.DataFrame(columns=["japanese", "kanji", "french", "example_sentence"])
+        mock_vocab_df = pd.DataFrame(
+            columns=["japanese", "kanji", "french", "example_sentence"]
+        )
 
         # Create a mock load_vocabulary function that verifies its arguments
         def verify_load_vocab(file, ref, console):
@@ -879,7 +916,9 @@ class TestVocabularyManagement(unittest.TestCase):
         mock_load_vocab = MagicMock(return_value=mock_vocab_df)
 
         with patch("rich.prompt.Confirm.ask", return_value=False):
-            add_vocabulary(mock_vocab_df, self.vocab_file, None, self.console, mock_load_vocab)
+            add_vocabulary(
+                mock_vocab_df, self.vocab_file, None, self.console, mock_load_vocab
+            )
 
         # Verify file contents
         with open(self.vocab_file, "r", encoding="utf-8") as f:

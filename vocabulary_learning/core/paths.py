@@ -1,6 +1,5 @@
 """Utilities for managing application paths and directories."""
 
-import os
 import sys
 from pathlib import Path
 
@@ -15,7 +14,8 @@ from vocabulary_learning.core.constants import (
 def get_data_dir() -> str:
     """Get the OS-specific data directory for storing application data.
 
-    Returns:
+    Returns
+    -------
         Path to the data directory
     """
     if sys.platform == "darwin":
@@ -27,7 +27,8 @@ def get_data_dir() -> str:
 def get_progress_file_path() -> Path:
     """Get the path to the progress.json file.
 
-    Returns:
+    Returns
+    -------
         Path object pointing to the progress.json file
     """
     return Path(get_data_dir()) / "data" / PROGRESS_FILE
@@ -36,7 +37,8 @@ def get_progress_file_path() -> Path:
 def get_vocabulary_file_path() -> Path:
     """Get the path to the vocabulary.json file.
 
-    Returns:
+    Returns
+    -------
         Path object pointing to the vocabulary.json file
     """
     return Path(get_data_dir()) / "data" / VOCABULARY_FILE

@@ -22,7 +22,8 @@ from vocabulary_learning.core.progress_tracking import (
 def get_progress_file() -> str:
     """Get the path to the progress.json file.
 
-    Returns:
+    Returns
+    -------
         String path to the progress file
     """
     # First check current directory for backward compatibility
@@ -48,7 +49,8 @@ def count_progress_stats(progress_file: str) -> dict:
     Args:
         progress_file: Path to the progress.json file
 
-    Returns:
+    Returns
+    -------
         Dictionary containing:
             - total_words: Total number of words being tracked
             - active_words: Number of words that have been started but not mastered
@@ -82,7 +84,9 @@ def display_stats(stats: dict, console: Console):
     table.add_column("Count", style="green")
     table.add_column("Details", style="dim")
 
-    table.add_row("Total Words", str(stats["total_words"]), "Total number of words being tracked")
+    table.add_row(
+        "Total Words", str(stats["total_words"]), "Total number of words being tracked"
+    )
     table.add_row(
         "Active Words",
         str(stats["active_words"]),
@@ -114,7 +118,9 @@ def display_item_stats(progress_file: str, console: Console):
 
     # Filter and sort words that have been attempted
     attempted_words = {
-        word_id: data for word_id, data in progress.items() if data.get("attempts", 0) > 0
+        word_id: data
+        for word_id, data in progress.items()
+        if data.get("attempts", 0) > 0
     }
     sorted_words = sorted(attempted_words.items(), key=lambda x: x[0])
 
@@ -150,16 +156,20 @@ def display_item_stats(progress_file: str, console: Console):
         attempts = word_data.get("attempts", 0)
         raw_rate = (successes / attempts * 100) if attempts > 0 else 0
         weighted_rate = (
-            calculate_weighted_success_rate(word_data.get("attempt_history", []), now) * 100
+            calculate_weighted_success_rate(word_data.get("attempt_history", []), now)
+            * 100
         )
         status = (
-            "[green]Mastered[/green]" if is_mastered(word_data) else "[yellow]Learning[/yellow]"
+            "[green]Mastered[/green]"
+            if is_mastered(word_data)
+            else "[yellow]Learning[/yellow]"
         )
 
         # Create attempt history string (✓ for success, ✗ for failure)
         attempt_history = word_data.get("attempt_history", [])
         history_str = "".join(
-            SUCCESS_MARK if attempt["success"] else FAILURE_MARK for attempt in attempt_history
+            SUCCESS_MARK if attempt["success"] else FAILURE_MARK
+            for attempt in attempt_history
         )
 
         table.add_row(
@@ -177,13 +187,17 @@ def display_item_stats(progress_file: str, console: Console):
 
 def main():
     """Display vocabulary learning progress statistics."""
-    parser = argparse.ArgumentParser(description="Display vocabulary learning progress statistics")
+    parser = argparse.ArgumentParser(
+        description="Display vocabulary learning progress statistics"
+    )
     parser.add_argument(
         "--progress-file",
         help="Path to progress.json file (optional, will try to find automatically if not provided)",
     )
     parser.add_argument(
-        "--items", action="store_true", help="Show detailed statistics for each attempted word"
+        "--items",
+        action="store_true",
+        help="Show detailed statistics for each attempted word",
     )
     args = parser.parse_args()
 
