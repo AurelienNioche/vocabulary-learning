@@ -130,6 +130,35 @@ def update_progress(
     save_callback()
 
 
+def initialize_progress(word_id: str, progress: Dict, save_callback: Callable) -> None:
+    """Initialize progress for a word without counting it as an attempt.
+
+    This function creates an entry for a word in the progress dictionary
+    if it doesn't exist yet, without affecting any statistics.
+
+    Args:
+        word_id: ID of the word
+        progress: Progress dictionary to update
+        save_callback: Function to call to save progress
+    """
+    now = get_utc_now()
+
+    # Only initialize if not already present
+    if word_id not in progress:
+        progress[word_id] = {
+            "attempts": 0,
+            "successes": 0,
+            "interval": 0,  # Start with 0 interval
+            "last_attempt_was_failure": False,
+            "last_seen": now.isoformat(),
+            "review_intervals": [],
+            "easiness_factor": INITIAL_EASINESS_FACTOR,
+            "attempt_history": [],
+            "first_introduced": now.isoformat(),  # Track first introduction date
+        }
+        save_callback()
+
+
 def calculate_weighted_success_rate(
     attempt_history: list, now: Optional[datetime] = None
 ) -> float:

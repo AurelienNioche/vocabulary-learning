@@ -17,7 +17,10 @@ from vocabulary_learning.core.firebase_config import initialize_firebase
 from vocabulary_learning.core.japanese_utils import JapaneseTextConverter
 from vocabulary_learning.core.paths import get_data_dir
 from vocabulary_learning.core.practice import practice_mode
-from vocabulary_learning.core.progress_tracking import update_progress
+from vocabulary_learning.core.progress_tracking import (
+    initialize_progress,
+    update_progress,
+)
 from vocabulary_learning.core.signal_handlers import signal_handler
 from vocabulary_learning.core.ui_components import (
     show_help,
@@ -105,6 +108,9 @@ class VocabularyLearner:
                 (word_id, self.vocabulary[word_id]), self.progress, self.console
             ),
             self.save_progress,
+            lambda word_id: initialize_progress(
+                word_id, self.progress, self.save_progress
+            ),
         )
 
         # Continue with menu loop
@@ -139,6 +145,9 @@ class VocabularyLearner:
                         (word_id, self.vocabulary[word_id]), self.progress, self.console
                     ),
                     self.save_progress,
+                    lambda word_id: initialize_progress(
+                        word_id, self.progress, self.save_progress
+                    ),
                 )
             elif choice == "2":
                 show_progress(self.vocabulary, self.progress, self.console)

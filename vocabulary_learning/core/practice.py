@@ -60,6 +60,7 @@ def practice_mode(
     show_help_fn,
     show_word_stats_fn,
     save_progress_fn,
+    initialize_progress_fn,
 ):
     """Practice mode for vocabulary learning."""
     if len(vocabulary) == 0:
@@ -117,7 +118,7 @@ def practice_mode(
             console.print(f"\n[dim]Time elapsed: {minutes}min{seconds}s[/dim]")
 
         # Select a word to practice
-        word_pair = select_word(vocabulary, progress, console)
+        word_pair = select_word(vocabulary, progress, console, initialize_progress_fn)
         if word_pair is None:
             active_count = count_active_learning_words(progress)
             console.print(
@@ -237,9 +238,18 @@ def practice_mode(
                         )
                     else:
                         # Display stats without updating progress
-                        display_updated_stats(
-                            progress[word_id], japanese, word_id, active_count, console
-                        )
+                        if word_id in progress:
+                            display_updated_stats(
+                                progress[word_id],
+                                japanese,
+                                word_id,
+                                active_count,
+                                console,
+                            )
+                        else:
+                            console.print(
+                                f"\n[yellow]No progress data for word {word_id}[/yellow]"
+                            )
                     first_attempt = False
                     console.print("\n[yellow]Let's try again![/yellow]")
                     break
@@ -274,14 +284,18 @@ def verify_data(vocabulary: pd.DataFrame, progress: Dict) -> None:
 
 
 def select_word(
-    vocabulary: pd.DataFrame, progress: Dict, console: Console
+    vocabulary: pd.DataFrame,
+    progress: Dict,
+    console: Console,
+    initialize_progress_fn=None,
 ) -> pd.Series:
     """Select a word for practice based on priority.
 
     Args:
-        vocabulary: DataFrame containing vocabulary
+        vocabulary: DataFrame containing vocabulary words
         progress: Dictionary containing progress data
-        console: Rich console for output
+        console: Console for output
+        initialize_progress_fn: Function to initialize progress for a word
 
     Returns
     -------
@@ -320,9 +334,13 @@ def select_word(
     # If new words have higher priority than existing words, select a new word
     if new_word_priority > max_priority and not new_words.empty:
         selected_word = new_words.iloc[0]
-        console.print(
-            f"\n[dim]Selecting {selected_word['japanese']} [{selected_word.name}][/dim]"
-        )
+        word_id = str(selected_word.name + 1).zfill(WORD_ID_DIGITS)
+
+        # Initialize progress for this new word
+        if initialize_progress_fn:
+            initialize_progress_fn(word_id)
+
+        console.print(f"\n[dim]Selecting {selected_word['japanese']} [{word_id}][/dim]")
         console.print(f"[dim]- priority: {new_word_priority:.1f} (new word)[/dim]")
         console.print("[dim]- success rate: 0% (0/0)[/dim]")
         console.print(f"[dim]- easiness factor: {INITIAL_EASINESS_FACTOR}[/dim]")
@@ -337,6 +355,12 @@ def select_word(
         # Sort by priority (highest first)
         sorted_words = sorted(priorities.items(), key=lambda x: x[1], reverse=True)
         word_id, priority = sorted_words[0]
+
+        # Check if word_id exists in progress
+        if word_id not in progress and initialize_progress_fn:
+            # Initialize progress for this word without counting it as an attempt
+            initialize_progress_fn(word_id)
+
         word_data = progress[word_id]
 
         # Find corresponding word in vocabulary
