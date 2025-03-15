@@ -12,6 +12,7 @@ from vocabulary_learning.core.file_operations import (
     load_progress,
     load_vocabulary,
     save_progress,
+    save_vocabulary,
 )
 from vocabulary_learning.core.firebase_config import initialize_firebase
 from vocabulary_learning.core.japanese_utils import JapaneseTextConverter
@@ -89,6 +90,19 @@ class VocabularyLearner:
             self.progress, self.progress_file, self.progress_ref, self.console
         )
 
+    def save_vocabulary(self, vocabulary=None):
+        """Save vocabulary to Firebase and local backup.
+
+        Args:
+            vocabulary: Optional vocabulary dataframe to save. If None, uses self.vocabulary.
+        """
+        vocab_to_save = vocabulary if vocabulary is not None else self.vocabulary
+        # Update internal vocabulary if a new one is provided
+        if vocabulary is not None:
+            self.vocabulary = vocabulary
+
+        save_vocabulary(vocab_to_save, self.vocab_file, self.vocab_ref, self.console)
+
     def run(self):
         """Run the main program loop."""
         # Show data directory location
@@ -111,6 +125,7 @@ class VocabularyLearner:
             lambda word_id: initialize_progress(
                 word_id, self.progress, self.save_progress
             ),
+            lambda vocab: self.save_vocabulary(vocab),
         )
 
         # Continue with menu loop
@@ -148,6 +163,7 @@ class VocabularyLearner:
                     lambda word_id: initialize_progress(
                         word_id, self.progress, self.save_progress
                     ),
+                    lambda vocab: self.save_vocabulary(vocab),
                 )
             elif choice == "2":
                 show_progress(self.vocabulary, self.progress, self.console)

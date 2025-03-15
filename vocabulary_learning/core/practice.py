@@ -61,8 +61,22 @@ def practice_mode(
     show_word_stats_fn,
     save_progress_fn,
     initialize_progress_fn,
+    save_vocabulary_fn=None,
 ):
-    """Practice mode for vocabulary learning."""
+    """Practice mode for vocabulary learning.
+
+    Args:
+        vocabulary: DataFrame containing vocabulary words
+        progress: Dictionary containing progress data
+        console: Console for output
+        japanese_converter: JapaneseTextConverter instance
+        update_progress_fn: Function to update progress
+        show_help_fn: Function to show help
+        show_word_stats_fn: Function to show word statistics
+        save_progress_fn: Function to save progress
+        initialize_progress_fn: Function to initialize progress for a word
+        save_vocabulary_fn: Optional function to save vocabulary changes
+    """
     if len(vocabulary) == 0:
         console.print(
             "[yellow]No vocabulary words found. Please add some words to the vocabulary.[/yellow]"
@@ -207,6 +221,99 @@ def practice_mode(
                         first_attempt = False
                         got_it_right = False
                         break
+                    elif answer == ":a":
+                        # Remember current progress state
+                        prev_progress_state = None
+                        if word_id in progress and first_attempt is False:
+                            prev_progress_state = progress[word_id].copy()
+
+                        # Add new vocabulary
+                        console.print("\n[bold blue]Adding New Vocabulary[/bold blue]")
+
+                        # We need to get the vocabulary file path and Firebase reference
+                        # Let's import and use the main VocabularyLearner class method
+                        console.print(
+                            "[dim]Enter vocabulary information or type :b to go back[/dim]"
+                        )
+
+                        # Simple implementation to add vocabulary during practice
+                        while True:
+                            jap = input("Japanese (hiragana): ").strip()
+                            if jap.lower() == ":b":
+                                break
+
+                            # Convert input to hiragana if possible
+                            if japanese_converter and not jap.startswith(":"):
+                                try:
+                                    jap = japanese_converter.to_hiragana(jap)
+                                except Exception as e:
+                                    console.print(
+                                        f"[yellow]Warning: Failed to convert text: {str(e)}[/yellow]"
+                                    )
+
+                            # Check for duplicates
+                            if not vocabulary.empty and any(
+                                vocabulary.japanese.str.lower() == jap.lower()
+                            ):
+                                console.print("[red]This word already exists![/red]")
+                                continue
+
+                            kanji_input = input("Kanji (optional): ").strip()
+                            french_input = input("French: ").strip()
+                            if not french_input:  # Skip if French translation is empty
+                                console.print(
+                                    "[red]French translation is required![/red]"
+                                )
+                                continue
+
+                            example_input = input(
+                                "Example sentence (optional): "
+                            ).strip()
+
+                            # Add the new word to the dataframe
+                            new_row = pd.DataFrame(
+                                {
+                                    "japanese": [jap],
+                                    "kanji": [kanji_input if kanji_input else None],
+                                    "french": [french_input],
+                                    "example_sentence": [
+                                        example_input if example_input else None
+                                    ],
+                                }
+                            )
+
+                            # Concatenate and update the vocabulary DataFrame
+                            vocabulary = pd.concat(
+                                [vocabulary, new_row], ignore_index=True
+                            )
+
+                            # Save vocabulary to file and Firebase if save function is provided
+                            console.print("[green]Word added successfully![/green]")
+                            if save_vocabulary_fn:
+                                save_vocabulary_fn(vocabulary)
+                                console.print(
+                                    "[green]Vocabulary has been saved.[/green]"
+                                )
+                            else:
+                                console.print(
+                                    "[yellow]Note: The word has been added to the in-memory vocabulary.[/yellow]"
+                                )
+                                console.print(
+                                    "[yellow]Changes will be saved when you exit practice mode.[/yellow]"
+                                )
+                            break
+
+                        # Restore previous progress state if needed
+                        if prev_progress_state is not None and word_id in progress:
+                            progress[word_id] = prev_progress_state
+                            console.print(
+                                "[green]Previous progress state restored.[/green]"
+                            )
+
+                        console.print(
+                            "\n[bold cyan]Returning to practice mode...[/bold cyan]"
+                        )
+                        continue
                     else:
                         console.print("[red]Invalid command. Type :h for help.[/red]")
                         continue

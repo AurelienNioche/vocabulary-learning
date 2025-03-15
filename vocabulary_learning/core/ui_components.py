@@ -166,7 +166,6 @@ def show_help(vim_commands, console):
     table = Table(title="Available Commands")
     table.add_column("Command", style="bold")
     table.add_column("Description", style="green")
-
     for cmd, desc in vim_commands.items():
         table.add_row(cmd, desc)
 
