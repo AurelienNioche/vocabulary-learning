@@ -45,7 +45,7 @@ VIM_COMMANDS = {
     ":S": "show all statistics",
     ":e": "show example sentence",
     ":d": "don't know (show answer)",
-    ":a": "add new vocabulary",
+    ":a": "add new definition for current word",
 }
 
 # Data Validation Constants

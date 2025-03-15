@@ -298,41 +298,22 @@ class TestPractice(unittest.TestCase):
 
     @patch("vocabulary_learning.core.practice.exit_with_save", side_effect=SystemExit)
     @patch("vocabulary_learning.core.practice.select_word")
-    @patch(
-        "builtins.input",
-        side_effect=[
-            ":a",
-            "おはよう",
-            "お早う",
-            "bonjour du matin",
-            "おはようございます。",
-            ":q",
-        ],
-    )
+    @patch("builtins.input", side_effect=[":a", "bonjour le soir", ":q"])
     def test_practice_mode_add_command(self, mock_input, mock_select_word, mock_exit):
-        """Test the :a command for adding new vocabulary during practice."""
+        """Test the :a command for adding new definitions during practice."""
         # Simplify this test to just check if the command is recognized
         # and the new word can be processed
         self.assertIn(":a", VIM_COMMANDS, "The :a command should be in VIM_COMMANDS")
         self.assertEqual(
-            VIM_COMMANDS[":a"], "add new vocabulary", "Command description should match"
+            VIM_COMMANDS[":a"],
+            "add new definition for current word",
+            "Command description should match",
         )
 
     @patch("vocabulary_learning.core.practice.select_word")
-    @patch(
-        "builtins.input",
-        side_effect=[
-            "wrong",
-            ":a",
-            "おはよう",
-            "お早う",
-            "bonjour du matin",
-            "おはようございます。",
-            "bonjour",
-        ],
-    )
+    @patch("builtins.input", side_effect=["wrong", ":a", "bonjour le soir", "bonjour"])
     def test_practice_mode_add_command_after_error(self, mock_input, mock_select_word):
-        """Test the :a command restores progress state after adding vocabulary following an error."""
+        """Test the :a command restores progress state after adding a definition following an error."""
         # Removed test implementation as it's sufficiently tested through actual usage
 
     @patch("vocabulary_learning.core.practice.exit_with_save", side_effect=SystemExit)

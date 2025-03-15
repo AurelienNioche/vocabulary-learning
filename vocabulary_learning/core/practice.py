@@ -227,81 +227,55 @@ def practice_mode(
                         if word_id in progress and first_attempt is False:
                             prev_progress_state = progress[word_id].copy()
 
-                        # Add new vocabulary
-                        console.print("\n[bold blue]Adding New Vocabulary[/bold blue]")
-
-                        # We need to get the vocabulary file path and Firebase reference
-                        # Let's import and use the main VocabularyLearner class method
+                        # Add new definition to the current word
+                        console.print("\n[bold blue]Adding New Definition[/bold blue]")
                         console.print(
-                            "[dim]Enter vocabulary information or type :b to go back[/dim]"
+                            f"[dim]Current word: {japanese} [{kanji if kanji else ''}][/dim]"
                         )
+                        console.print(f"[dim]Current definition: {french}[/dim]")
 
-                        # Simple implementation to add vocabulary during practice
-                        while True:
-                            jap = input("Japanese (hiragana): ").strip()
-                            if jap.lower() == ":b":
-                                break
-
-                            # Convert input to hiragana if possible
-                            if japanese_converter and not jap.startswith(":"):
-                                try:
-                                    jap = japanese_converter.to_hiragana(jap)
-                                except Exception as e:
-                                    console.print(
-                                        f"[yellow]Warning: Failed to convert text: {str(e)}[/yellow]"
-                                    )
-
-                            # Check for duplicates
-                            if not vocabulary.empty and any(
-                                vocabulary.japanese.str.lower() == jap.lower()
-                            ):
-                                console.print("[red]This word already exists![/red]")
-                                continue
-
-                            kanji_input = input("Kanji (optional): ").strip()
-                            french_input = input("French: ").strip()
-                            if not french_input:  # Skip if French translation is empty
-                                console.print(
-                                    "[red]French translation is required![/red]"
-                                )
-                                continue
-
-                            example_input = input(
-                                "Example sentence (optional): "
-                            ).strip()
-
-                            # Add the new word to the dataframe
-                            new_row = pd.DataFrame(
-                                {
-                                    "japanese": [jap],
-                                    "kanji": [kanji_input if kanji_input else None],
-                                    "french": [french_input],
-                                    "example_sentence": [
-                                        example_input if example_input else None
-                                    ],
-                                }
+                        # Get the new definition
+                        new_definition = input("Enter additional definition: ").strip()
+                        if not new_definition:
+                            console.print(
+                                "[yellow]No definition provided. Operation cancelled.[/yellow]"
                             )
-
-                            # Concatenate and update the vocabulary DataFrame
-                            vocabulary = pd.concat(
-                                [vocabulary, new_row], ignore_index=True
-                            )
-
-                            # Save vocabulary to file and Firebase if save function is provided
-                            console.print("[green]Word added successfully![/green]")
-                            if save_vocabulary_fn:
-                                save_vocabulary_fn(vocabulary)
+                        else:
+                            # Check if the definition is already included
+                            existing_defs = [
+                                d.strip().lower() for d in french.split("/")
+                            ]
+                            if new_definition.lower() in existing_defs:
                                 console.print(
-                                    "[green]Vocabulary has been saved.[/green]"
+                                    "[yellow]This definition already exists![/yellow]"
                                 )
                             else:
+                                # Update the word in the vocabulary DataFrame
+                                word_index = vocabulary[
+                                    vocabulary["japanese"] == japanese
+                                ].index[0]
+                                updated_definition = f"{french}/{new_definition}"
+                                vocabulary.at[word_index, "french"] = updated_definition
+
+                                # Save vocabulary to file and Firebase if save function is provided
                                 console.print(
-                                    "[yellow]Note: The word has been added to the in-memory vocabulary.[/yellow]"
+                                    "[green]Definition added successfully![/green]"
                                 )
                                 console.print(
-                                    "[yellow]Changes will be saved when you exit practice mode.[/yellow]"
+                                    f"[green]Updated definition: {updated_definition}[/green]"
                                 )
-                            break
+                                if save_vocabulary_fn:
+                                    save_vocabulary_fn(vocabulary)
+                                    console.print(
+                                        "[green]Vocabulary has been saved.[/green]"
+                                    )
+                                else:
+                                    console.print(
+                                        "[yellow]Note: The definition has been added in-memory.[/yellow]"
+                                    )
+                                    console.print(
+                                        "[yellow]Changes will be saved when you exit practice mode.[/yellow]"
+                                    )
 
                         # Restore previous progress state if needed
                         if prev_progress_state is not None and word_id in progress:
